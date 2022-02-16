@@ -19,12 +19,16 @@ var m_q1Exp;
 
 var prevK, prevN, cachedSummation;
 
+//DEBUG
+var printLog;
+
 var init = () => {
     currency = theory.createCurrency();
 
     theory.primaryEquationHeight = 100;
     theory.primaryEquationScale = 1.2;
 
+    printLog = true;
     prevK = 0;
     prevN = 0;
     cachedSummation = 0;
@@ -100,16 +104,15 @@ var updateAvailability = () => {
 var tick = (elapsedTime, multiplier) => {
     let dt = BigNumber.from(elapsedTime * multiplier);
     let bonus = theory.publicationMultiplier;
-
     let vq1 = getQ1(q1.level).pow(getQ1Exp(m_q1Exp.level));
     let vq2 = getQ2(q2.level);
-
     var exponentialSum = getSummation(n.level);
-
     var tickSum = bonus * dt * vq1 * vq2 * exponentialSum;
     currency.value += tickSum;
-
+    //printLog = true;
+    debugLog("added " + bonus + " * " + dt + " * " + vq1 + " * " + vq2 + " * " + exponentialSum + " = " + tickSum);
     theory.invalidateSecondaryEquation();
+    printLog = false;
 }
 
 var getPrimaryEquation = () => {
@@ -157,6 +160,8 @@ var computeSummation = (limit, prevLimit, all) => {
 var getSummation = (limit) => {
     var sum = cachedSummation;
 
+    debugLog(cachedSummation + " " + prevK + " " + prevN);
+
     if(k.level > prevK) {
         sum = computeSummation(limit, prevN, true);
         cachedSummation = sum;
@@ -172,6 +177,11 @@ var getSummation = (limit) => {
     }
 
     return BigNumber.from(sum).sqrt();
+}
+
+var debugLog = (message) => {
+    if(printLog)
+        log(message)
 }
 
 init();
