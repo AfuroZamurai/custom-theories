@@ -42,6 +42,7 @@ var prevK, prevN, cachedSummation;
 // DEBUG
 
 var printLog;
+var test;
 
 /////////////////////////////////////////
 // Initializations & Definitions
@@ -152,7 +153,7 @@ var init = () => {
     {
         m_rootExp = theory.createMilestoneUpgrade(3, 2);
         m_rootExp.description = Localization.getUpgradeDecCustomDesc("root\\ exponent", `${rootExp}`);
-        m_rootExp.info = Localization.getUpgradeDecCustom("root\\ exponent", `${rootExp}`);
+        m_rootExp.info = Localization.getUpgradeDecCustomInfo("root\\ exponent", `${rootExp}`);
         m_rootExp.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
     }
 
@@ -160,13 +161,13 @@ var init = () => {
     {
         m_oneAdd = theory.createMilestoneUpgrade(4, 2);
         m_oneAdd.description = Localization.getUpgradeIncCustomDesc("1", `${oneAdd}`);
-        m_oneAdd.info = Localization.getUpgradeIncCustom("1", `${oneAdd}`);
+        m_oneAdd.info = Localization.getUpgradeIncCustomInfo("1", `${oneAdd}`);
         m_oneAdd.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
     }
 
     // Milestone j exponent
     {
-        m_jExp = theory.createMilestoneUpgrade(1, 2);
+        m_jExp = theory.createMilestoneUpgrade(5, 2);
         m_jExp.description = Localization.getUpgradeIncCustomExpDesc("j\\ exponent", `${jExp}`);
         m_jExp.info = Localization.getUpgradeIncCustomExpInfo("j\\ exponent", `${jExp}`);
         m_jExp.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
@@ -174,7 +175,7 @@ var init = () => {
 
     // Milestone k exponent
     {
-        m_kExp = theory.createMilestoneUpgrade(2, 2);
+        m_kExp = theory.createMilestoneUpgrade(6, 2);
         m_kExp.description = Localization.getUpgradeIncCustomExpDesc("k", `${kExp}`);
         m_kExp.info = Localization.getUpgradeIncCustomInfo("k", `${kExp}`);
         m_kExp.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
@@ -305,7 +306,7 @@ var getPrimaryEquation = () => {
 }
 
 var getSecondaryEquation = () => {
-    return "\\Phi_t = " + "\\frac{f_{t + 1}}{f_{t}} = " + getF(f.level + 1) / getF(f.level) + "\\qquad f_t = " + getF(f.level) + " \\qquad f_{t + 1} = " + getF(f.level + 1);
+    return "\\Phi_t = " + "\\frac{f_{t + 1}}{f_{t}} = " + getF(f.level + 1) / getF(f.level) + "\\qquad f_t = " + BigNumber.from(getF(f.level)) + " \\qquad f_{t + 1} = " + BigNumber.from(getF(f.level + 1));
 }
 
 var getTertiaryEquation = () => {
@@ -338,11 +339,10 @@ var getjExp = (level) => 1 + level * jExp;
 var getF = (level) => {
     if(level == 0 || level == 1)
         return 1;
-    var res = new Array(2).fill(0);
 
     // This only works up to level 42 right now because of precision
-    FastDoubling(level + 1, res);
-    return res[0];
+    var nthFib = FastDoubling(level + 1);
+    return nthFib;
 }
 
 /////////////////////////////////////////
@@ -389,64 +389,38 @@ var getSummation = (limit) => {
 
 // Fibonacci Sequence
 
-let a, b, c, d;
-let MOD = 1000000007;
-
-// Function calculate the N-th fibanacci
-// number using fast doubling method
-// Taken from online but unfortunately needs to be adapted to BigNumber
-// else it will overflow too soon
-function FastDoubling(n, res)
-{
-    // Base Condition
-    if (n == 0) {
-        res[0] = 0;
-        res[1] = 1;
-        return;
+function FastDoubling(n){
+    let a = 0;
+    let b = 1;
+    for (let i = 31; i >= 0; i--) {
+        let d = a * (b * 2 - a);
+        let e = a * a + b * b;
+        a = d;
+        b = e;
+        if (((n >> i) & 1) != 0) {
+            let c = a + b;
+            a = b;
+            b = c;
+        }
     }
-    FastDoubling(parseInt(n / 2, 10), res);
+    return a;
+}
 
-    // Here a = F(n)
-    a = res[0];
-
-    debugLog("n: " + n + ", a: " + a);
-
-    // Here b = F(n+1)
-    b = res[1];
-
-    debugLog("n: " + n + ", b: " + b);
-
-    c = 2 * b - a;
-
-    debugLog("n: " + n + ", c: " + c);
-
-    if (c < 0)
-        c += MOD;
-
-    debugLog("n: " + n + ", c2: " + c);
-
-    // As F(2n) = F(n)[2F(n+1) – F(n)]
-    // Here c  = F(2n)
-    c = (a * c) % MOD;
-
-    debugLog("n: " + n + ", c3: " + c);
-
-    // As F(2n + 1) = F(n)^2 + F(n+1)^2
-    // Here d = F(2n + 1)
-    d = (a * a + b * b) % MOD;
-
-    debugLog("n: " + n + ", d: " + d);
-
-    // Check if N is odd
-    // or even
-    if (n % 2 == 0) {
-        res[0] = c;
-        res[1] = d;
+function FastDoublingWithBigNumber(n){
+    let a = BigNumber.ZERO;
+    let b = BigNumber.ONE;
+    for (let i = 31; i >= 0; i--) {
+        let d = BigNumber.from(a * (b * 2 - a));
+        let e = BigNumber.from(a * a + b * b);
+        a = d;
+        b = e;
+        if (((n >> i) & 1) != 0) {
+            let c = BigNumber.from(a + b);
+            a = b;
+            b = c;
+        }
     }
-    else {
-        res[0] = d;
-        res[1] = c + d;
-    }
+    return a;
 }
 
 /////////////////////////////////////////
