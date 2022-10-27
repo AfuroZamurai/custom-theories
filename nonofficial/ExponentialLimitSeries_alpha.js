@@ -3,6 +3,7 @@ import { Localization } from "./api/Localization";
 import { BigNumber } from "./api/BigNumber";
 import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
+import { Rounding } from "./api/BigNumber";
 
 /////////////////////////////////////////
 // Metadata
@@ -17,11 +18,11 @@ var version = 1;
 /////////////////////////////////////////
 // Constants
 
-const GOLDEN_RATIO = 1.618;
+const GOLDEN_RATIO =  1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475408807538689175212663386222353693179318006076672635443338908659593958290563832266131992829026788067520876689250171169620703222104;
 const q1Exp = 0.15;
 const q2Exp = 0.15;
+const lExp = 0.1;
 const rootExp = 0.1;
-const oneAdd = 0.1;
 const jExp = 0.005;
 const kExp = 0.05;
 
@@ -30,7 +31,7 @@ const kExp = 0.05;
 
 var currency;
 var q1, q2, k, n, f; // buyable variables
-var m_q1Exp, m_q2Exp, m_fUnlock, m_rootExp, m_oneAdd, m_jExp, m_kExp; // milestones
+var m_q1Exp, m_q2Exp, m_fUnlock, m_lExp, m_rootExp, m_jExp, m_kExp; // milestones
 var numPublications = 0; // publications done so far
 
 /////////////////////////////////////////
@@ -52,8 +53,10 @@ var init = () => {
     // Setup and initialization
     currency = theory.createCurrency();
 
-    theory.primaryEquationHeight = 100;
+    theory.primaryEquationHeight = 70;
     theory.primaryEquationScale = 1.2;
+    theory.secondaryEquationHeight = 70;
+    theory.secondaryEquationScale = 1.2;
 
     printLog = true;
     prevK = 0;
@@ -106,6 +109,14 @@ var init = () => {
         fPrev = 1;
     }
 
+    // l
+    {
+        let getDesc = (level) => "l=" + getL(level).toString();
+        l = theory.createUpgrade(5, currency, new ExponentialCost(1500, Math.log2(BigNumber.E + 0.3)));
+        l.getDescription = (_) => Utils.getMath(getDesc(l.level));
+        l.getInfo = (amount) => Utils.getMathTo(getDesc(l.level), getDesc(l.level + amount));
+    }
+
     // another variable connected to f?
 
     /////////////////////////////////////////
@@ -147,22 +158,20 @@ var init = () => {
         }
     }
 
-    // another milestone connected to a potential variable connected to f (or just to f)?
+    // Milestone l exponent
+    {
+        m_lExp = theory.createMilestoneUpgrade(3, 2);
+        m_lExp.description = Localization.getUpgradeIncCustomExpDesc("l", `${lExp}`);
+        m_lExp.info = Localization.getUpgradeIncCustomExpInfo("l", `${lExp}`);
+        m_lExp.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
+    }
 
     // Milestone root exponent decrease
     {
-        m_rootExp = theory.createMilestoneUpgrade(3, 2);
+        m_rootExp = theory.createMilestoneUpgrade(4, 2);
         m_rootExp.description = Localization.getUpgradeDecCustomDesc("root\\ exponent", `${rootExp}`);
         m_rootExp.info = Localization.getUpgradeDecCustomInfo("root\\ exponent", `${rootExp}`);
         m_rootExp.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
-    }
-
-    // Milestone one increase
-    {
-        m_oneAdd = theory.createMilestoneUpgrade(4, 2);
-        m_oneAdd.description = Localization.getUpgradeIncCustomDesc("1", `${oneAdd}`);
-        m_oneAdd.info = Localization.getUpgradeIncCustomInfo("1", `${oneAdd}`);
-        m_oneAdd.boughtOrRefunded = (_) => theory.invalidatePrimaryEquation();
     }
 
     // Milestone j exponent
@@ -246,7 +255,7 @@ var init = () => {
     chapter4 = theory.createStoryChapter(3, "Déjà-vu", "Reached e50 rho", () => currency.value >= BigNumber.From("1e50"));
     chapter5 = theory.createStoryChapter(4, "Golden idea", "Unlock Fibonacci", () => f.isAvailable);
     chapter6 = theory.createStoryChapter(5, "Aided growth", "Decreased root exponent", () => m_rootExp.level >= 1);
-    chapter7 = theory.createStoryChapter(6, "Impatience", "Increased 1", () => m_oneAdd.level >= 1);
+    //chapter7 = theory.createStoryChapter(6, "Impatience", "Increased 1", () => m_oneAdd.level >= 1);
     chapter8 = theory.createStoryChapter(7, "Satisfaction", "Reached e1000 rho", () => currency.value >= BigNumber.From("1e1000"));
     chapter9 = theory.createStoryChapter(8, "Letting it go", "Got all milestones", () => allMilestonesUnlocked());
     chapter10 = theory.createStoryChapter(9, "Finale", "Reached e1500 rho", () => currency.value >= BigNumber.From("1e1500"));
@@ -267,10 +276,11 @@ var tick = (elapsedTime, multiplier) => {
     let dt = BigNumber.from(elapsedTime * multiplier);
     let bonus = theory.publicationMultiplier;
     let vq1 = getQ1(q1.level).pow(getQ1Exp(m_q1Exp.level));
-    let vq2 = getQ2(q2.level);
-    var exponentialSum = getSummation(n.level);
-    var tickSum = bonus * dt * exponentialSum;
-    currency.value += vq1 * vq2 * tickSum;
+    let vq2 = getQ2(q2.level).pow(getQ2Exp(m_q2Exp.level));
+    let exponentialSum = getSummation(n.level);
+    let a = getA();
+    let tickSum = bonus * dt * exponentialSum;
+    currency.value += vq1 * vq2 * a * tickSum;
     printLog = true;
     //debugLog("added " + bonus + " * " + dt + " * " + exponentialSum + " = " + tickSum);
     theory.invalidateSecondaryEquation();
@@ -280,6 +290,7 @@ var tick = (elapsedTime, multiplier) => {
 
 var updateAvailability = () => {
     f.IsAvailable = m_fUnlock.level > 0;
+    l.isAvailable = m_fUnlock.level > 0;
 }
 
 /////////////////////////////////////////
@@ -290,7 +301,9 @@ var getPrimaryEquation = () => {
     if (m_q1Exp.level > 0) 
         result += `^{${getQ1Exp(m_q1Exp.level)}}`;
     
-    result += "q_2\\sqrt[2]{s} \\qquad s = \\sum_{j = 1}^{n}\\left(1+\\frac{k";
+    result += "q_2a\\sqrt[2]{s}";
+    
+    result += "\\qquad s = \\sum_{j = 1}^{n}\\left(1+\\frac{k";
 
     if (m_kExp.level > 0) 
         result += `^{${getKExp(m_kExp.level)}}`;
@@ -302,15 +315,20 @@ var getPrimaryEquation = () => {
     
     result += "}";
 
+    result += "\\qquad a = \\frac{l}{\\Delta}";
+
     return result;
 }
 
 var getSecondaryEquation = () => {
-    return "\\Phi_t = " + "\\frac{f_{t + 1}}{f_{t}} = " + getF(f.level + 1) / getF(f.level) + "\\qquad f_t = " + BigNumber.from(getF(f.level)) + " \\qquad f_{t + 1} = " + BigNumber.from(getF(f.level + 1));
+    let result = "\\Delta = \\mid\\phi - \\frac{f_{t + 1}}{f_{t}}\\mid";
+    result += "\\qquad \\Delta = " + getDelta();
+    return  result;
 }
 
 var getTertiaryEquation = () => {
-    return theory.latexSymbol + "=\\max\\rho";
+    let result = theory.latexSymbol + "=\\max\\rho";
+    return result;
 }
 
 /////////////////////////////////////////
@@ -340,9 +358,19 @@ var getF = (level) => {
     if(level == 0 || level == 1)
         return 1;
 
-    // This only works up to level 42 right now because of precision
     var nthFib = FastDoubling(level + 1);
     return nthFib;
+}
+
+var getL = (level) => {
+    if(level == 0)
+        return 2;
+
+    if(level == 1)
+        return 1;
+
+    var nthLucas = FastDoubling(level - 1) + FastDoubling(level + 1);
+    return nthLucas;
 }
 
 /////////////////////////////////////////
@@ -355,7 +383,6 @@ var computeSummation = (limit, prevLimit, all) => {
     for (var i = startIndex; i <= limit; i++) {
         var kNumerator = BigNumber.from(getK(k.level)).pow(getKExp(m_kExp.level));
         var iexp = BigNumber.from(i).pow(getjExp(m_jExp.level));
-        var iPhi = BigNumber.from(i * (getF(f.level + 1) / getF(f.level))); // how to include that the best?
         var res = BigNumber.from(1 + (kNumerator/i)).pow(iexp);
         sum += res;
     }
@@ -367,6 +394,7 @@ var computeSummation = (limit, prevLimit, all) => {
 var getSummation = (limit) => {
     var sum = cachedSummation;
 
+    // TODO: cache pre-computed values in an array
     if(k.level > prevK) {
         sum = computeSummation(limit, prevN, true);
         cachedSummation = sum;
@@ -382,6 +410,27 @@ var getSummation = (limit) => {
     }
 
     return BigNumber.from(sum).sqrt();
+}
+
+var getApproximation = () => {
+    if(f.level == 0)
+        return 1;
+
+    return getF(f.level) / getF(f.level - 1);
+}
+
+var getDelta = () => {
+    if(f.level == 0)
+        return 1;
+
+    return Math.abs(GOLDEN_RATIO - getApproximation());
+}
+
+var getA = () => {
+    if(!f.isAvailable)
+        return 1;
+
+    return BigNumber.from(getL(l.level) / getDelta());
 }
 
 /////////////////////////////////////////

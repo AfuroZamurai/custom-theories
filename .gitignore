@@ -389,3 +389,9 @@ FodyWeavers.xsd
 
 # Misc
 launchSettings.json
+
+# ignored theories
+test/*
+
+# ideas
+ideas/*
