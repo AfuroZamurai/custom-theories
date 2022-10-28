@@ -3,7 +3,6 @@ import { Localization } from "./api/Localization";
 import { BigNumber } from "./api/BigNumber";
 import { theory } from "./api/Theory";
 import { Utils } from "./api/Utils";
-import { Rounding } from "./api/BigNumber";
 
 /////////////////////////////////////////
 // Metadata
@@ -23,14 +22,14 @@ const q1Exp = 0.15;
 const q2Exp = 0.15;
 const lExp = 0.1;
 const rootExp = 0.1;
-const jExp = 0.005;
+const jExp = 0.01;
 const kExp = 0.05;
 
 /////////////////////////////////////////
 // Theory Variables
 
 var currency;
-var q1, q2, k, n, f; // buyable variables
+var q1, q2, k, n, f, l; // buyable variables
 var m_q1Exp, m_q2Exp, m_fUnlock, m_lExp, m_rootExp, m_jExp, m_kExp; // milestones
 var numPublications = 0; // publications done so far
 
@@ -43,7 +42,6 @@ var prevK, prevN, cachedSummation;
 // DEBUG
 
 var printLog;
-var test;
 
 /////////////////////////////////////////
 // Initializations & Definitions
@@ -117,8 +115,6 @@ var init = () => {
         l.getInfo = (amount) => Utils.getMathTo(getDesc(l.level), getDesc(l.level + amount));
     }
 
-    // another variable connected to f?
-
     /////////////////////////////////////////
     // Permanent Upgrades
 
@@ -155,6 +151,7 @@ var init = () => {
         m_fUnlock.boughtOrRefunded = (_) => {
             updateAvailability();
             theory.invalidatePrimaryEquation();
+            theory.invalidateSecondaryEquation();
         }
     }
 
@@ -265,8 +262,9 @@ var init = () => {
 // Verification helpers
 
 var allMilestonesUnlocked = () =>{
-    // this must be doable in a better way
-    return theory.milestonesTotal == 11
+    //log(m_q1Exp.maxLevel);
+    return m_q1Exp.level == m_q1Exp.maxLevel && m_q2Exp.level == m_q2Exp.maxLevel && m_fUnlock.level == m_fUnlock.maxLevel &&
+    m_lExp.level == m_lExp.maxLevel && m_jExp.level == m_jExp.maxLevel && m_kExp.level == m_kExp.maxLevel && m_rootExp.level == m_rootExp.maxLevel;
 }
 
 /////////////////////////////////////////
@@ -279,10 +277,11 @@ var tick = (elapsedTime, multiplier) => {
     let vq2 = getQ2(q2.level).pow(getQ2Exp(m_q2Exp.level));
     let exponentialSum = getSummation(n.level);
     let a = getA();
-    let tickSum = bonus * dt * exponentialSum;
-    currency.value += vq1 * vq2 * a * tickSum;
+    let tickSum = bonus * dt * vq1 * vq2 * a * exponentialSum;
+    currency.value += tickSum;
     printLog = true;
-    //debugLog("added " + bonus + " * " + dt + " * " + exponentialSum + " = " + tickSum);
+    //debugLog("dt: " + dt + ", q1: " + vq1 + ", q2: " + vq2 + ", a: " + a + ", summation: " + exponentialSum);
+    //debugLog("Currency increased by " + bonus + " * " + dt + " * " + vq1 + " * " + vq2 + " * " + a + " * " + exponentialSum + " = " + tickSum);
     theory.invalidateSecondaryEquation();
     theory.invalidateTertiaryEquation();
     printLog = false;
@@ -301,7 +300,16 @@ var getPrimaryEquation = () => {
     if (m_q1Exp.level > 0) 
         result += `^{${getQ1Exp(m_q1Exp.level)}}`;
     
-    result += "q_2a\\sqrt[2]{s}";
+    result += "q_2";
+    if (m_q2Exp.level > 0) 
+        result += `^{${getQ2Exp(m_q2Exp.level)}}`;
+    
+    if(m_fUnlock.level > 0)
+        result += "a";
+
+    result += "\\sqrt[";
+    result += `${getRootExp(m_rootExp.level)}`;
+    result += "]{s}";
     
     result += "\\qquad s = \\sum_{j = 1}^{n}\\left(1+\\frac{k";
 
@@ -315,12 +323,21 @@ var getPrimaryEquation = () => {
     
     result += "}";
 
-    result += "\\qquad a = \\frac{l}{\\Delta}";
-
+    if(m_fUnlock.level > 0){
+        result += "\\qquad a = \\frac{l";
+        if (m_lExp.level > 0) 
+            result += `^{${getLExp(m_lExp.level)}}`;
+        
+        result += "}{\\Delta}";
+    }
+    
     return result;
 }
 
 var getSecondaryEquation = () => {
+    if(m_fUnlock.level == 0)
+        return "";
+
     let result = "\\Delta = \\mid\\phi - \\frac{f_{t + 1}}{f_{t}}\\mid";
     result += "\\qquad \\Delta = " + getDelta();
     return  result;
@@ -348,6 +365,8 @@ var getQ1Exp = (level) => 1 + level * q1Exp;
 var getQ2 = (level) => BigNumber.TWO.pow(BigNumber.from(level));
 var getQ2Exp = (level) => 1 + level * q2Exp;
 
+var getRootExp = (level) => 2 - level * rootExp;
+
 var getK = (level) => level;
 var getKExp = (level) => 1 + level * kExp;
 
@@ -372,6 +391,7 @@ var getL = (level) => {
     var nthLucas = FastDoubling(level - 1) + FastDoubling(level + 1);
     return nthLucas;
 }
+var getLExp = (level) => 1 + level * lExp;
 
 /////////////////////////////////////////
 // Main Summation Computation
@@ -400,7 +420,7 @@ var getSummation = (limit) => {
         cachedSummation = sum;
         prevK = k.level;
         prevN = limit;
-        return BigNumber.from(sum).sqrt();
+        return BigNumber.from(sum).pow(1/getRootExp(m_rootExp.level));
     }
 
     if(limit > prevN) {
@@ -430,7 +450,8 @@ var getA = () => {
     if(!f.isAvailable)
         return 1;
 
-    return BigNumber.from(getL(l.level) / getDelta());
+    let lNumerator = BigNumber.from(getL(l.level)).pow(getLExp(m_lExp.level));
+    return BigNumber.from(lNumerator / getDelta());
 }
 
 /////////////////////////////////////////
