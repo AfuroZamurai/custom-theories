@@ -932,6 +932,13 @@ var getBackgroundColor = (preset) => {
     }
 }
 
+var resetBackgroundColors = () => {
+    for (var square of gameGrid.children) {
+        var cell = board[getBoardNum(square.row, square.column)];
+        square.backgroundColor = getBackgroundColor(cell.isGiven)
+    }
+}
+
 var getBorderColor = () => {
     switch(game.settings.theme) {
         case Theme.STANDARD:
@@ -1054,14 +1061,29 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                 if(mode != NORMAL_MODE)
                     return;
 
-                if(hasAllNumbers(board) && checkBoard(board)) {
+                resetBackgroundColors();
+
+                if(!hasAllNumbers(board))
+                    return;
+
+                var checkResult = checkBoard(board);
+                if(checkResult[0]) {
                     log("Won " + difficulty);
                     var stars = rewardForDifficulty(difficulty);
                     increaseCurrency(stars);
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
                     resetDifficulty(difficulty);
-                } else if (hasAllNumbers(board)){
+                } 
+                else {
                     stateLabel.text = "Solution is incorrect!";
+
+                    for (var wrongCell of checkResult[1]) {
+                        var row = wrongCell[0];
+                        var column = wrongCell[1];
+                        var wrongSquare = gameGrid.children[row * 9 + column];
+                        log("(" + row + "," + column + "): " + wrongSquare.children[0].text);
+                        wrongSquare.backgroundColor = Color.fromRgb(0.7, 0.3, 0.3);
+                    }
                 }
             }
         });
@@ -1089,6 +1111,7 @@ var createButtonsGrid = (difficulty) => {
             log("Pressed Clear for cell " + "(" + selectedSquare.row + "," + selectedSquare.column + ")");
 
             clearCell(board, selectedSquare.row, selectedSquare.column, selectedSquare.content);
+            resetBackgroundColors();
         }
     });
     
@@ -1278,7 +1301,7 @@ var checkBoard = (board) => {
         return isSolved(board);
     }
     
-    return false;
+    return (false, new Set());
 }
 
 var setNormalNumber = (number, cell, gridCellContent) => {
@@ -1444,16 +1467,21 @@ var hasAllNumbers = (board) => {
 }
 
 var isSolved = (board) => {
+    var correct = true;
+    var wrongCells = new Set();
+
     // Check rows
     for(let r = 0; r < ROWS; r++) {
         for (let rc = 0; rc < COLS; rc++) {
             var currentNumber = board[getBoardNum(r, rc)].number;
             if(currentNumber < 1) {
-                return false;
+                return [false, new Set()];
             }
             for(let rcc = rc + 1; rcc < COLS; rcc++) {
                 if(currentNumber == board[getBoardNum(r, rcc)].number) {
-                    return false;
+                    correct = false;
+                    wrongCells.add([r, rc]);
+                    wrongCells.add([r, rcc]);
                 }
             }
         }
@@ -1464,32 +1492,38 @@ var isSolved = (board) => {
         for (let cr = 0; cr < ROWS; cr++) {
             var currentNumber = board[getBoardNum(cr, c)].number;
             if(currentNumber < 1) {
-                return false;
+                return [false, new Set()];
             }
             for(let crc = cr + 1; crc < ROWS; crc++) {
                 if(currentNumber == board[getBoardNum(crc, c)].number) {
-                    return false;
+                    correct = false;
+                    wrongCells.add([cr, c]);
+                    wrongCells.add([crc, c]);
                 }
             }
         }
     }
 
     // Check boxes
-    for(let bri = 0; bri < BOX_SIZE; bri += 3) {
-        for(let bci = 0; bci < BOX_SIZE; bci += 3) {
+    for(let bri = 0; bri < ROWS; bri += 3) {
+        for(let bci = 0; bci < COLS; bci += 3) {
             for(let br = 0; br < BOX_SIZE; br++) {
                 for(let bc = 0; bc < BOX_SIZE; bc++) {
                     var currentNumber = board[getBoardNum(bri + br, bci + bc)].number;
                     if(currentNumber < 1) {
-                        return false;
+                        return [false, new Set()];
                     }
                     for(let brc = 0; brc < BOX_SIZE; brc++) {
                         for(let bcc = 0; bcc < BOX_SIZE; bcc++) {
+                            
                             if(brc == br && bcc == bc)
                                 continue;
 
-                            if(currentNumber == board[getBoardNum(bri + brc, bci + bcc)].number) {
-                                return false;
+                            var compareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
+                            if(currentNumber == compareNumber) {
+                                correct = false;
+                                wrongCells.add([bri + br, bci + bc]);
+                                wrongCells.add([bri + brc, bci + bcc]);
                             }
                         }
                     }
@@ -1498,7 +1532,7 @@ var isSolved = (board) => {
         }
     }
 
-    return true;
+    return [correct, wrongCells];
 }
 
 var boardFromString = (boardString) => {
