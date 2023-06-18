@@ -18,7 +18,7 @@ var id = "sudoku_theory_alpha";
 var name = "Sudoku Alpha";
 var description = "A minigame theory which allows you to play different difficulties of sudoku (alpha version, still missing a lot of the ultimately planned features)";
 var authors = "AfuroZamurai";
-var version = 1.1;
+var version = 1.2;
 
 var currency;
 var easy, medium, hard, expert, omega, devilish;
@@ -935,6 +935,7 @@ var createButtonsGrid = (difficulty) => {
         column: 0,
         text: textForMode(mode),
         onClicked: () => {
+            log("Pressed Mode");
             mode = (mode + 1) % 3;
             buttons[0].text = textForMode(mode);
         }
@@ -945,7 +946,7 @@ var createButtonsGrid = (difficulty) => {
         column: 1,
         text: "Undo",
         onClicked: () => {
-
+            log("Pressed Undo");
         }
     });
     buttons[1].isEnabled = false;
@@ -955,7 +956,7 @@ var createButtonsGrid = (difficulty) => {
         column: 2,
         text: "Redo",
         onClicked: () => {
-
+            log("Pressed Redo");
         }
     });
     buttons[2].isEnabled = false;
@@ -965,6 +966,7 @@ var createButtonsGrid = (difficulty) => {
         column: 0,
         text: "Hint (+10s)",
         onClicked: () => {
+            log("Pressed Hint");
             hintLabel.text = "Hint: not implemented";
         }
     });
@@ -976,6 +978,7 @@ var createButtonsGrid = (difficulty) => {
         text: "Replay",
         onClicked: () => {
             //reset timer etc.
+            log("Pressed Replay");
 
             clearAndSetBoard(difficulty);
         }
@@ -985,7 +988,8 @@ var createButtonsGrid = (difficulty) => {
         row: 1,
         column: 2,
         text: "Pause",
-        onClicked: () => {                           
+        onClicked: () => {     
+            log("Pressed Pause");                      
             popup.hide();
         }
     });
@@ -1350,27 +1354,27 @@ var getRandomBoard = (difficulty) => {
     var boardString = ''
     switch(difficulty) {
         case EASY:
-            var index = Math.round(Math.random() * easyPuzzles.length);
+            var index = Math.min(easyPuzzles.length -1 , Math.round(Math.random() * easyPuzzles.length));
             boardString = easyPuzzles[index];
             break;
         case MEDIUM:
-            var index = Math.round(Math.random() * mediumPuzzles.length);
+            var index = Math.min(mediumPuzzles.length -1 , Math.round(Math.random() * mediumPuzzles.length));
             boardString = mediumPuzzles[index];
             break;
         case HARD:
-            var index = Math.round(Math.random() * hardPuzzles.length);
+            var index = Math.min(hardPuzzles.length -1 , Math.round(Math.random() * hardPuzzles.length));
             boardString = hardPuzzles[index];
             break;
         case EXPERT:
-            var index = Math.round(Math.random() * expertPuzzles.length);
+            var index = Math.min(expertPuzzles.length -1 , Math.round(Math.random() * expertPuzzles.length));
             boardString = expertPuzzles[index];
             break;
         case OMEGA:
-            var index = Math.round(Math.random() * omegaPuzzles.length);
+            var index = Math.min(omegaPuzzles.length -1 , Math.round(Math.random() * omegaPuzzles.length));
             boardString = omegaPuzzles[index];
             break;
         case DEVILISH:
-            var index = Math.round(Math.random() * devilishPuzzles.length);
+            var index = Math.min(devilishPuzzles.length -1 , Math.round(Math.random() * devilishPuzzles.length));
             boardString = devilishPuzzles[index];
             break;
         default:
