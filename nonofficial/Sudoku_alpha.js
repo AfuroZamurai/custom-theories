@@ -18,7 +18,7 @@ var id = "sudoku_theory_alpha";
 var name = "Sudoku Alpha";
 var description = "A minigame theory which allows you to play different difficulties of sudoku (alpha version, still missing a lot of the ultimately planned features)";
 var authors = "AfuroZamurai";
-var version = 1.2;
+var version = 1.5;
 
 var currency;
 var easy, medium, hard, expert, omega, devilish;
@@ -1291,9 +1291,14 @@ var getBoard = (difficulty) => {
 var clearAndSetBoard = (difficulty) => {
     board = null;
     selectedSquare = null;
+    resetDifficulty(difficulty);
+
     board = getBoard(difficulty);
 
+    // TODO: maybe invest the effort to use the existing popup
+    popup.hide();
     popup = createPopupUI(difficulty, board);
+    popup.show();
 }
 
 var checkBoard = (board) => {
