@@ -3,7 +3,7 @@ This code includes region comments to collapse code sections in VS Code via the 
 */
 
 //#region Imports
-import { LinearCost, FreeCost } from "./api/Costs";
+import { FreeCost } from "./api/Costs";
 import { Localization } from "./api/Localization";
 import { theory } from "./api/Theory";
 import { TextAlignment } from "./api/ui/properties/TextAlignment";
@@ -18,27 +18,46 @@ var id = "sudoku_theory_alpha";
 var name = "Sudoku Alpha";
 var description = "A minigame theory which allows you to play different difficulties of sudoku (alpha version, still missing a lot of the ultimately planned features)";
 var authors = "AfuroZamurai";
-var version = 1;
+var version = 1.1;
 
 var currency;
-var easy, medium, hard, expert;
-var m_medium, m_hard, m_expert;
+var easy, medium, hard, expert, omega, devilish;
+var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
 
-var easyBoard, mediumBoard, hardBoard, expertBoard;
+const EASY = "Easy";
+const MEDIUM = "Medium";
+const HARD = "Hard";
+const EXPERT = "Expert";
+const OMEGA = "Omega";
+const DEVILISH = "Devilish";
 
-var isPopupOpen = false;
+const REWARD_EASY = 30;
+const REWARD_MEDIUM = 150;
+const REWARD_HARD = 750;
+const REWARD_EXPERT = 2500;
+const REWARD_OMEGA = 5000;
+const REWARD_DEVILISH = 10000;
 
-var gameGrid = null;
 const ROWS = 9;
 const COLS = 9;
 const BOARD_SIZE = ROWS * COLS;
 const BOX_SIZE = 3;
+
+const NORMAL_MODE = 0;
+const CORNER_MODE = 1;
+const CENTER_MODE = 2;
+
+var isPopupOpen = false;
+
+var gameGrid = null;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
 Medium = 42
 Hard = 37
 Expert = around 32 (30-33)
+Omega = difficult puzzles provided by the user Omega from Discord
+Devilish = custom searched puzzles with high challenge
 */
 let easyPuzzles = ['094260150700013694681090703109074580503680940020001367945700206830009470000500000',
 '528304176371060800000807025103200704089401200040953010230605080004709502065008430',
@@ -440,17 +459,131 @@ let expertPuzzles = ['0090260000401082090000003780302004055016000008700039062000
 '590000600060020179000300000203057900000106008410000007800205000007093410005004082',
 '002003806041056000000000190000340700006010509178000020900000000780460003603009052',
 '201006400900503700300010005009000003000870600410000920000201000060400258700038094']
+let omegaPuzzles = ['003005060020040000100000500000024600008000200001890000007000009000060080040500700',
+'806040200000000000907050301000000002408209603600000000102030405000000000009080706',
+'500200000010050000000009074700000005030000100005007020000020860004006200009800000',
+'001750000009000000000046800130020007200000003400070051005390000000000300000085100',
+'000000004007000300010507060002040900000905000006070400050208030003000700900000000',
+'600200900090010050002003008000004009080000070300800000800600300070040010004002005',
+'009010006000023000820000450300000060000801000040000007071000095000670000200050600',
+'000203090607000000000009070701000008000000000400000507020900000000000604030104000',
+'300010008090000020005000700000207000800040003000803000008000200050000080100060004',
+'000000000030502060008090200060000030004000900050000070009020800070609050000000000']
+let devilishPuzzles = ['000000001000002030004050600000001072060080500700000000040090000096400800307008000',
+'980700600500040000003009020700080000040500000006001002009000301000003260000000079',
+'980760000750000000004500870500900460040030000000005002400006008090800540000000001',
+'020400080000009000000070001006800400300000007045000020000003000004600050900010008',
+'980360500500700900006009080600030000090200070025006300200600700001000004000000050',
+'020000080400009020709000004000500800300010050090004007070002008000300600001060000',
+'490100000200060400007004000600900200020050080003000007010200600000010050000008003',
+'100050009056009000079200000001003800007060001000000040090070006000800020000004300',
+'000400009000080100700002060010000008060090400500003070600020000030005000075600020',
+'120000700007000036600070000000008050040900008001020300000500000002060100900004000',
+'003006000406080100080100000030001400000900000900070050040008600002000004000500072',
+'100000009400000200080003050000708060000012400000000000060800070030605000900020000',
+'987600500400800690030000002700040009000700050000069700500400900008000040000001000',
+'000020300004300005030006010070080900800400002001000050900200500006003000020090007',
+'080200600300004000500090000009000070010700006000040210070820060003050008000000100',
+'000050009007100200000003040010600007006000020870000600030090000700004050008200100',
+'005079000670500900800000000400000030008900500000020001006700800000030020000001004',
+'900760500700050690000008007600409035000030060003006400300040900020000000007001000',
+'600700800708960500050008000500007400030400000000090020400070600000806001000000050',
+'020050000400009030080200600060000008300040070000000001500037000007005090000100000',
+'980000000007900600000050000700400900006030020000005001070500800004010050000002003',
+'005009000670500000800070500400003020030000001006900800007800600000010004000002000',
+'900800700080060050000000004700009000050030008002100000060000030001200900000040005',
+'000450009400000230600002000070590000300008000090700001000000860040010007000000000',
+'987650400300400600000008000600900300020000010000070006500040003000500064000009500',
+'050000004003900070100000600008370000000095000000200090600000500040000001007020080',
+'023000009400000100009020040200090001000005800005600000000800070060007000900040003',
+'820760500700080600005000000900007300004830000000090020300900700000076001000000050',
+'003400009000080200060007010006001050010000900570000000600005090000090004000200800',
+'987000000600900500050080000400300950060092070000000002100063005040100000006009100',
+'004000001070003080200000500000009000090300060000706002001000008080600070500080400',
+'023050700056700003700000000000004890500020007008000000300060002000901400010000000',
+'100400080050009002009000000000600803600000001000041060072000500000074000800300010',
+'100020300002300001040005060000080900500400003006000020900700500007008000010030007',
+'980600500600000080004000000790300050003006900000002703370800005001007000020060070',
+'087600503600000090040500700070400800000020001000006070030200080004300057000004300',
+'001000004070002050600000800000007090000210007050309000008000600030900020400000001',
+'003050000400100200090007000200000408070000050000600100600800004000030090030004800',
+'100200003040050020002000600500003070060020800000900000005040200080700060900000001',
+'103006000406080100080000000010003600005000090000200007030001800001070002900500000',
+'005090000670800000800000600500003020040000001007900500008700900000040030000010002',
+'900700600700500400061020007800600500030000090000009000600007004008000700000800065',
+'080760500704009030000000000400000200208001040000200008307910000040007300009030070',
+'980710500700400800006005000500900400030074000000050020100040089007000100000100004',
+'960780500700005000005060000408007900006009800000040030020000050007006209000200001',
+'400000008050020040006004900070302000000050700000001030009000400020030050800000006',
+'300000002080070010006900000050704000000000008000510070009000300010040080200000006',
+'000010007020400080300000500090806000000049060002000000007000100040900020005000003',
+'003450000000080060080007005200800100300001900010070004000000020040700001900010600',
+'009000003050002060400000700000508020000190000010006000300000900020800050007000004',
+'980740500500009070007500000600030000008605700005408300020000003009004800000000010',
+'900780500700060900005009000500007800004830000000000020300900700000076019000000050',
+'903700500500400600040050080700004006039000400000900070300600700002000000070095001',
+'980670000750090600006000000400900050008450700000003004027000030009830500000000001',
+'608700900700960500050008000500007400030400000000090020400070800000806001000000050',
+'023406000000080000090300400000005008000010070006200900700000050062000300040000001',
+'980650400400800600000000070800300960020000030300010005600000000094000300038400006',
+'103050000007100006080007100040900060008004300700020000000000092800001400000500010',
+'907600500640501700503020000800900400000008050000000008700065094000400070000000600',
+'980060500700005080005000004300200000006009400000070023010000040009007800000810095',
+'800000004000090030001400700060305000002000000000069050007000100020030090400000008',
+'020450009006009000000200400000100000008000013090005200300000078060004500000070000',
+'070000000300020050004100600005040020030600400000008009001030040050400700000009008',
+'980500600750060090006009000400000005008750060005900080030000200007800030000030001',
+'950860700007000060000005009408006900030020040009008600100000090005007100000100006',
+'080060500704030600062000070400500900090003085008090006040050800000009000800000001',
+'100450700007009030600700000000007003040010900500600000010000098000000002002008300',
+'900000002080007040006000100000058070000010000050703000200000600040500030001000009',
+'402000001070009020008000600000705090000002000050930000100000800020500030006000004',
+'007000004020003010600000800000205000050030090000109000008000007010300020400000601',
+'500060700010304000080070000030100000005080900000002040809000007000000020600000509',
+'600000008030007040009000100000302070000014000020750000800000009040200050001000600',
+'005089000600700000070000900500030002400000010007600500006500800000020003000001040',
+'890760500600080900005009000500007800004830000000000020300900600000076001000000050',
+'006002000300050700040900000700000108000000040000080037100030005009400000020006000',
+'380700600005064000000300000830000700090000030002000001060900800000020050000001004',
+'012000000300040000500100030001600050060070008000009600000006900003400020000080007',
+'500000009020100070008000300040207000000080000000605010300000800060004020009000005',
+'000500008700068000000210000002000040090000300600005001100070006040000020003000900',
+'000700900000000030009030806003050060700400000010002000005080090020000000400001005',
+'087650400630040700002000060070305080008704500000080007050030800000001009000000000',
+'890500600700080050005004000300002140006400090000010000020090005007800060000000003',
+'120050000050000006006003000001060008080900070000008400000700800000004090002030005',
+'900740500507060900003000070600090420000800000000002001200000059050020046006000200',
+'083760500704009080060080700305806200020005000006020000030050800000000010000000007',
+'080700600700050020004000007000302000010090000300005090900030010070000008036000400',
+'090700600540080070007004000300020500910000000005400080009800060000003002400090100',
+'120406000006080002080000000000900050000003400600070001007005090800000300060010007',
+'010000002300000040005006700000087900000904000008560000009800500020000001400000030',
+'700000009030400060005000200010806000000070000000031080200000700040008030009000005',
+'002001000000030040300600700007009005080000020100400600006007003050080000700100900',
+'008001000300070900050200000600000409000000050000090730400030007001500000020008000',
+'980560700750400900003009000800006000075800090040050800500600400000020008000000010',
+'907650400400800500006094070800000000094000600065900080600500800030020000000000001',
+'940003600005060040000008500000300020010000075002070400100009200006020004000800000',
+'005069000670800000800000600040000030007500900000020001008700500000010020000003004',
+'000090000560700000708000500400009030007800900000020001006900700000010040000003002',
+'980730500700400900000008030600000000050047600040600009400500200002004005000020001',
+'103400000006080003080000040010600008307000000000007200500000090000092500030100004',
+'920760500700405900005020000470500600003000080000000000100040050090100046000007100']
 //#endregion
 
 var init = () => {
+    ///////////////////
+    // Setup
     currency = theory.createCurrency("⋆", "\star");
+
+    theory.secondaryEquationHeight = 100;
 
     ///////////////////
     // Sudoku variables
 
     // easy
     {
-        let getDesc = () => "Easy difficulty";
+        let getDesc = () => "Easy difficulty (gain " + REWARD_EASY + " ⋆)";
         let getInfo = () => "Open a sudoku with an easy difficulty";
         easy = theory.createUpgrade(0, currency, new FreeCost());
         easy.getDescription = (_) =>getDesc();
@@ -458,41 +591,41 @@ var init = () => {
         easy.bought = (amount) => { 
             easy.level -= amount;
             if (!isPopupOpen) 
-                showSudokuPopup("Easy");
+                showSudokuPopup(EASY);
         };
     }
 
     // medium
     {
-        let getDesc = () => "Medium difficulty";
-        let getInfo = () => "Open a sudoku with an medium difficulty";
+        let getDesc = () => "Medium difficulty (gain " + REWARD_MEDIUM + " ⋆)";
+        let getInfo = () => "Open a sudoku with a medium difficulty";
         medium = theory.createUpgrade(1, currency, new FreeCost());
         medium.getDescription = (_) =>getDesc();
         medium.getInfo = (amount) => getInfo();
         medium.bought = (amount) => { 
             medium.level -= amount;
             if (!isPopupOpen) 
-                showSudokuPopup("Medium");
+                showSudokuPopup(MEDIUM);
         };
     }
 
     // hard
     {
-        let getDesc = () => "Hard difficulty";
-        let getInfo = () => "Open a sudoku with an hard difficulty";
+        let getDesc = () => "Hard difficulty (gain " + REWARD_HARD + " ⋆)";
+        let getInfo = () => "Open a sudoku with a hard difficulty";
         hard = theory.createUpgrade(2, currency, new FreeCost());
         hard.getDescription = (_) =>getDesc();
         hard.getInfo = (amount) => getInfo();
         hard.bought = (amount) => { 
             hard.level -= amount;
             if (!isPopupOpen) 
-                showSudokuPopup("Hard");
+                showSudokuPopup(HARD);
         };
     }
 
     // expert
     {
-        let getDesc = () => "Expert difficulty";
+        let getDesc = () => "Expert difficulty (gain " + REWARD_EXPERT + " ⋆)";
         let getInfo = () => "Open a sudoku with an expert difficulty";
         expert = theory.createUpgrade(3, currency, new FreeCost());
         expert.getDescription = (_) =>getDesc();
@@ -500,63 +633,45 @@ var init = () => {
         expert.bought = (amount) => { 
             expert.level -= amount;
             if (!isPopupOpen) 
-                showSudokuPopup("Expert");
+                showSudokuPopup(EXPERT);
         };
     }
 
-    /////////////////////
-    // Permanent Upgrades
-
-    permPub = theory.createPublicationUpgrade(0, currency, 0);
-
-    // Maybe something for hints or checking or pencil marks?
-
-    /////////////////////
-    // Milestone Upgrades
-
-    theory.setMilestoneCost(new LinearCost(1, 1));
-
+    // omega
     {
-        m_medium = theory.createMilestoneUpgrade(0, 1);
-        m_medium.getDescription = (_) => Localization.getUpgradeUnlockDesc('medium\\ difficulty');
-        m_medium.getInfo = (_) => Localization.getUpgradeUnlockInfo("medium\\ difficulty");
-        m_medium.canBeRefunded = (_) => false;
-        m_medium.boughtOrRefunded = (_) => { updateAvailability(); };
+        let getDesc = () => "Omega difficulty (gain " + REWARD_OMEGA + " ⋆)";
+        let getInfo = () => "Open a sudoku with an omega difficulty";
+        omega = theory.createUpgrade(4, currency, new FreeCost());
+        omega.getDescription = (_) =>getDesc();
+        omega.getInfo = (amount) => getInfo();
+        omega.bought = (amount) => { 
+            omega.level -= amount;
+            if (!isPopupOpen) 
+                showSudokuPopup(OMEGA);
+        };
     }
 
+    // devilish
     {
-        m_hard = theory.createMilestoneUpgrade(1, 1);
-        m_hard.getDescription = (_) => Localization.getUpgradeUnlockDesc("hard\\ difficulty");
-        m_hard.getInfo = (_) => Localization.getUpgradeUnlockInfo("hard\\ difficulty");
-        m_hard.canBeRefunded = (_) => false;
-        m_hard.boughtOrRefunded = (_) => { updateAvailability(); };
-    }
-
-    {
-        m_expert = theory.createMilestoneUpgrade(2, 1);
-        m_expert.getDescription = (_) => Localization.getUpgradeUnlockDesc("expert\\ difficulty");
-        m_expert.getInfo = (_) => Localization.getUpgradeUnlockInfo("expert\\ difficulty");
-        m_expert.canBeRefunded = (_) => false;
-        m_expert.boughtOrRefunded = (_) => { updateAvailability(); };
+        let getDesc = () => "Devilish difficulty (gain " + REWARD_DEVILISH + " ⋆)";
+        let getInfo = () => "Open a sudoku with a devilish difficulty";
+        devilish = theory.createUpgrade(5, currency, new FreeCost());
+        devilish.getDescription = (_) =>getDesc();
+        devilish.getInfo = (amount) => getInfo();
+        devilish.bought = (amount) => { 
+            devilish.level -= amount;
+            if (!isPopupOpen) 
+                showSudokuPopup(DEVILISH);
+        };
     }
         
     ///////////////
     // Achievements
 
-    // Maybe in a full release
-
-    updateAvailability();
+    // Planned for the full release (or late beta)
 }
 
 //#region Theory Code
-var updateAvailability = () => {
-    m_hard.isAvailable = m_medium.level > 0;
-    m_expert.isAvailable = m_hard.level > 0;
-    medium.isAvailable = m_medium.level > 0;
-    hard.isAvailable = m_hard.level > 0;
-    expert.isAvailable = m_expert.level > 0;
-}
-
 var tick = (elapsedTime, multiplier) => {
     if (gameGrid && gameGrid.width > 0 && gameGrid.heightRequest < 0) 
         gameGrid.heightRequest = Math.max(gameGrid.width, 0);
@@ -566,7 +681,7 @@ var tick = (elapsedTime, multiplier) => {
 var getInternalState = () => {
     // save all difficulty board states
     log("Saving...");
-    return JSON.stringify([easyBoard, mediumBoard, hardBoard, expertBoard]);
+    return JSON.stringify([easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard]);
 }
 
 var setInternalState = (state) => {
@@ -577,6 +692,8 @@ var setInternalState = (state) => {
     mediumBoard = boards[1];
     hardBoard = boards[2];
     expertBoard = boards[3];
+    omegaBoard = boards[4];
+    devilishBoard = boards[5];
 }
 
 var getPrimaryEquation = () => {
@@ -584,26 +701,31 @@ var getPrimaryEquation = () => {
 }
 
 var getSecondaryEquation = () => {
-    return "\\text{Finish\\ a\\ difficulty\\ to\\ unlock\\ a\\ harder\\ one\\ by\\ unlocking\\\\ publications\\ in\\ Upgrades\\ and\\ setting\\ the\\ milestones}";
+    return "\\text{The goal of a Sudoku is to place numbers such that \\\\ each number between 1 and 9 appears exactly once \\\\ in each row, column or 3x3 box.}";
 }
 
 var getTau = () => currency.value;
-var get2DGraphValue = () => 0;
 
 var rewardForDifficulty = (difficulty) => {
     var reward = 0;
     switch(difficulty) {
-        case "Easy":
-            reward = 30;
+        case EASY:
+            reward = REWARD_EASY;
             break;
-        case "Medium":
-            reward = 150;
+        case MEDIUM:
+            reward = REWARD_MEDIUM;
             break;
-        case "Hard":
-            reward = 750;
+        case HARD:
+            reward = REWARD_HARD;
             break;
-        case "Expert":
-            reward = 3750;
+        case EXPERT:
+            reward = REWARD_EXPERT;
+            break;
+        case OMEGA:
+            reward = REWARD_OMEGA;
+            break;
+        case DEVILISH:
+            reward = REWARD_DEVILISH;
             break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
@@ -618,25 +740,31 @@ var increaseCurrency = (reward) => {
 
 var resetDifficulty = (difficulty) => {
     switch(difficulty) {
-        case "Easy":
+        case EASY:
             easyBoard = null;
             break;
-        case "Medium":
+        case MEDIUM:
             mediumBoard = null;
             break;
-        case "Hard":
+        case HARD:
             hardBoard = null;
             break;
-        case "Expert":
+        case EXPERT:
             expertBoard = null;
+            break;
+        case OMEGA:
+            omegaBoard = null;
+            break;
+        case DEVILISH:
+            devilishBoard = null;
             break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
 }
-//#endregion
 
 init();
+//#endregion
 
 //#region UI Utility
 var getBackgroundColor = (preset) => {
@@ -735,7 +863,7 @@ var createSquare = (i, j, cell) => {
             if(selectedSquare != null) {
                 selectedSquare.borderColor = getBorderColor();
             }
-            selectedSquare = square
+            selectedSquare = square;
             square.borderColor = getSelectedBorderColor();
         }
     }
@@ -772,10 +900,10 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                 if(selectedSquare === null)
                     return;
 
-                log("clicked " + i + " for mode " + mode + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
+                log("clicked " + i + " for mode " + textForMode(mode) + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
 
                 setNumber(i, board, selectedSquare.row, selectedSquare.column);
-                if(mode != 0)
+                if(mode != NORMAL_MODE)
                     return;
 
                 if(hasAllNumbers(board) && checkBoard(board)) {
@@ -874,8 +1002,6 @@ var createButtonsGrid = (difficulty) => {
 var createPopupUI = (difficulty, board) => {
     var gameGrid = createGameGrid(board);
 
-    var descriptionLabel = ui.createLatexLabel({ text: "Place numbers such that each number between 1 and 9 appears exactly once in each row, column or 3x3 box.",
-        horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 10, 0, 6) });
     var timer = ui.createLatexLabel({text: "Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 5, 0, 5)});
     var bestTimeLabel = ui.createLatexLabel({text: "Best Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
     var hintLabel = ui.createLatexLabel({text: "Hint: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
@@ -889,7 +1015,6 @@ var createPopupUI = (difficulty, board) => {
         closeOnBackgroundClicked: false,
         content: ui.createStackLayout({
             children: [
-                descriptionLabel,
                 timer,
                 bestTimeLabel,
                 hintLabel,
@@ -906,15 +1031,15 @@ var createPopupUI = (difficulty, board) => {
 
 var popup = null;
 var selectedSquare = null;
-var mode = 0; // 0 = normal, 1 = corners, 2 = center
+var mode = NORMAL_MODE;
 
 var textForMode = (mode) => {
     switch(mode) {
-        case 0:
+        case NORMAL_MODE:
             return "Normal";
-        case 1:
+        case CORNER_MODE:
             return "Corners";
-        case 2:
+        case CENTER_MODE:
             return "Center";
         default:
             throw new Error("Unknown mode! Cannot continue execution.");
@@ -937,30 +1062,42 @@ var showSudokuPopup = (difficulty) => {
 var getBoard = (difficulty) => {
     var randomBoard = null;
     switch(difficulty) {
-        case "Easy":
+        case EASY:
             if(easyBoard == null || easyBoard.length == 0) {       
                 randomBoard = getRandomBoard(difficulty);
                 easyBoard = generate(randomBoard);
             }
             return easyBoard;
-        case "Medium":
+        case MEDIUM:
             if(mediumBoard == null || mediumBoard.length == 0) {       
                 randomBoard = getRandomBoard(difficulty);
                 mediumBoard = generate(randomBoard);
             }
             return mediumBoard;
-        case "Hard":
+        case HARD:
             if(hardBoard == null || hardBoard.length == 0) {       
                 randomBoard = getRandomBoard(difficulty);
                 hardBoard = generate(randomBoard);
             }
             return hardBoard;
-        case "Expert":
+        case EXPERT:
             if(expertBoard == null || expertBoard.length == 0) {       
                 randomBoard = getRandomBoard(difficulty);
                 expertBoard = generate(randomBoard);
             }
             return expertBoard;
+        case OMEGA:
+            if(omegaBoard == null || omegaBoard.length == 0) {       
+                randomBoard = getRandomBoard(difficulty);
+                omegaBoard = generate(randomBoard);
+            }
+            return omegaBoard;
+        case DEVILISH:
+            if(devilishBoard == null || devilishBoard.length == 0) {       
+                randomBoard = getRandomBoard(difficulty);
+                devilishBoard = generate(randomBoard);
+            }
+            return devilishBoard;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -1074,13 +1211,13 @@ var setNumber = (number, board, r, c) => {
     if(selectedSquare != null) {
         var cell = board[getBoardNum(r, c)];
         switch (mode) {
-            case 0:
+            case NORMAL_MODE:
                 setNormalNumber(number, cell, selectedSquare.content);
                 break;
-            case 1:
+            case CORNER_MODE:
                 setCornerNumber(number, cell, selectedSquare.content);
                 break;
-            case 2:
+            case CENTER_MODE:
                 setCenterNumber(number, cell, selectedSquare.content);
                 break;
             default:
@@ -1210,21 +1347,31 @@ var boardFromString = (boardString) => {
 }
 
 var getRandomBoard = (difficulty) => {
-    // We love hardcoded values
-    var index = Math.round ( Math.random() * 100);
     var boardString = ''
     switch(difficulty) {
-        case "Easy":
+        case EASY:
+            var index = Math.round(Math.random() * easyPuzzles.length);
             boardString = easyPuzzles[index];
             break;
-        case "Medium":
+        case MEDIUM:
+            var index = Math.round(Math.random() * mediumPuzzles.length);
             boardString = mediumPuzzles[index];
             break;
-        case "Hard":
+        case HARD:
+            var index = Math.round(Math.random() * hardPuzzles.length);
             boardString = hardPuzzles[index];
             break;
-        case "Expert":
+        case EXPERT:
+            var index = Math.round(Math.random() * expertPuzzles.length);
             boardString = expertPuzzles[index];
+            break;
+        case OMEGA:
+            var index = Math.round(Math.random() * omegaPuzzles.length);
+            boardString = omegaPuzzles[index];
+            break;
+        case DEVILISH:
+            var index = Math.round(Math.random() * devilishPuzzles.length);
+            boardString = devilishPuzzles[index];
             break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
