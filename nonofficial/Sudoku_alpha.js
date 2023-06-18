@@ -1081,48 +1081,31 @@ var createButtonsGrid = (difficulty) => {
     buttons[0] = ui.createButton({
         row: 0,
         column: 0,
+        text: "Clear",
+        onClicked: () => {
+            if(selectedSquare === null || isFinished(difficulty))
+                return;
+
+            log("Pressed Clear for cell " + "(" + selectedSquare.row + "," + selectedSquare.column + ")");
+
+            clearCell(board, selectedSquare.row, selectedSquare.column, selectedSquare.content);
+        }
+    });
+    
+    buttons[1] = ui.createButton({
+        row: 0,
+        column: 1,
         text: textForMode(mode),
         onClicked: () => {
             log("Pressed Mode");
             mode = (mode + 1) % 3;
-            buttons[0].text = textForMode(mode);
+            buttons[1].text = textForMode(mode);
         }
     });
-
-    buttons[1] = ui.createButton({
-        row: 0,
-        column: 1,
-        text: "Undo",
-        onClicked: () => {
-            log("Pressed Undo");
-        }
-    });
-    buttons[1].isEnabled = false;
 
     buttons[2] = ui.createButton({
         row: 0,
         column: 2,
-        text: "Redo",
-        onClicked: () => {
-            log("Pressed Redo");
-        }
-    });
-    buttons[2].isEnabled = false;
-
-    buttons[3] = ui.createButton({
-        row: 1,
-        column: 0,
-        text: "Hint (+10s)",
-        onClicked: () => {
-            log("Pressed Hint");
-            hintLabel.text = "Hint: not implemented";
-        }
-    });
-    buttons[3].isEnabled = false;
-
-    buttons[4] = ui.createButton({
-        row: 1,
-        column: 1,
         text: "Replay",
         onClicked: () => {
             //reset timer etc.
@@ -1132,15 +1115,36 @@ var createButtonsGrid = (difficulty) => {
         }
     });
 
+    buttons[3] = ui.createButton({
+        row: 1,
+        column: 0,
+        text: "Undo",
+        onClicked: () => {
+            log("Pressed Undo");
+        }
+    });
+    buttons[3].isEnabled = false;
+
+    buttons[4] = ui.createButton({
+        row: 1,
+        column: 1,
+        text: "Redo",
+        onClicked: () => {
+            log("Pressed Redo");
+        }
+    });
+    buttons[4].isEnabled = false;
+
     buttons[5] = ui.createButton({
         row: 1,
         column: 2,
-        text: "Pause",
-        onClicked: () => {     
-            log("Pressed Pause");                      
-            popup.hide();
+        text: "Hint (+10s)",
+        onClicked: () => {
+            log("Pressed Hint");
+            hintLabel.text = "Hint: not implemented";
         }
     });
+    buttons[3].isEnabled = false;
 
     let buttonGrid = ui.createGrid({
         columnDefinitions: ["1*", "1*", "1*"],
@@ -1337,7 +1341,7 @@ var setCornerNumber = (number, cell, gridCellContent) => {
         cell.cornerMarks.sort();
     }
     
-    clearCornerNumbers(selectedSquare.content)
+    clearCornerNumbers(selectedSquare.content);
     setCornerNumbers(cell, selectedSquare.content);
 }
 
@@ -1382,6 +1386,16 @@ var setNumber = (number, board, r, c) => {
                 break;
         } 
     }
+}
+
+var clearCell = (board, r, c, gridCellContent) => {
+    var cell = board[getBoardNum(r, c)];
+    cell.number = 0;
+    cell.cornerMarks = []
+    cell.centerMarks = []
+    gridCellContent.children[0].text = "";
+    clearCornerNumbers(gridCellContent);
+    gridCellContent.children[1].children[2].text = "";
 }
 //#endregion
 
