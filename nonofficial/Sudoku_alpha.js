@@ -1012,13 +1012,24 @@ var createSquare = (i, j, cell) => {
     }
 
     square.onTouched = (e) => {
-        if(cell.isGiven)
-            return;
         if (e.type == TouchType.PRESSED) {
+            if(selectedGivenSquare != null) {
+                selectedGivenSquare.borderColor = getBorderColor();
+            }
+
             if(selectedSquare != null) {
                 selectedSquare.borderColor = getBorderColor();
             }
-            selectedSquare = square;
+
+            if(cell.isGiven) {
+                selectedGivenSquare = square;
+                selectedSquare = null;
+            } 
+            else{
+                selectedSquare = square;
+                selectedGivenSquare = null;
+            }
+            
             square.borderColor = getSelectedBorderColor();
         }
     }
@@ -1209,6 +1220,7 @@ var createPopupUI = (difficulty, board) => {
 }
 
 var popup = null;
+var selectedGivenSquare = null;
 var selectedSquare = null;
 var mode = NORMAL_MODE;
 
