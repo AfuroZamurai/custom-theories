@@ -18,7 +18,7 @@ var id = "sudoku_theory_alpha";
 var name = "Sudoku Alpha";
 var description = "A minigame theory which allows you to play different difficulties of sudoku (alpha version, still missing a lot of the ultimately planned features)";
 var authors = "AfuroZamurai";
-var version = 1.5;
+var version = 1.6;
 
 var currency;
 var easy, medium, hard, expert, omega, devilish;
@@ -938,6 +938,29 @@ var getBackgroundColor = (preset) => {
     }
 }
 
+/**
+ * Selects a red background color for cells containing invalid numbers.
+ * The color is adjusted according to theme and will be different for given and open cells.
+ * @param {*} preset If the given square is representing a given number
+ * @returns A red color, differing according to the theme and if it is a given or open cell
+ */
+var getInvalidBackgroundColor = (preset) => {
+    switch(game.settings.theme) {
+        case Theme.STANDARD:
+            if(preset)
+                return Color.fromRgb(0.5, 0.2, 0.2);
+            return Color.fromRgb(0.7, 0.4, 0.4);
+        case Theme.DARK:
+            if(preset)
+                return Color.fromRgb(0.9, 0.3, 0.3);
+            return Color.fromRgb(0.5, 0, 0);
+        case Theme.LIGHT:
+            if(preset)
+                return Color.fromRgb(0.9, 0.3, 0.3);
+            return Color.fromRgb(1, 0.7, 0.7);
+    }
+}
+
 var resetBackgroundColors = () => {
     for (var square of gameGrid.children) {
         var cell = board[getBoardNum(square.row, square.column)];
@@ -964,6 +987,17 @@ var getSelectedBorderColor = () => {
             return Color.fromRgb(1, 0, 0);
         case Theme.LIGHT:
             return Color.fromRgb(0, 0, 1);
+    }
+}
+
+var markInvalidCells = (wrongCells) => {
+    for (var wrongCell of wrongCells) {
+        var row = wrongCell[0];
+        var column = wrongCell[1];
+        var wrongSquare = gameGrid.children[row * 9 + column];
+        log("(" + row + "," + column + "): " + wrongSquare.content.children[0].text);
+        var isGiven = board[row * 9 + column].isGiven;
+        wrongSquare.backgroundColor = getInvalidBackgroundColor(isGiven);
     }
 }
 
@@ -1080,11 +1114,9 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
 
                 resetBackgroundColors();
 
-                if(!hasAllNumbers(board))
-                    return;
-
                 var checkResult = checkBoard(board);
-                if(checkResult[0]) {
+                var fullBoard = hasAllNumbers(board);
+                if(checkResult[0] && fullBoard) {
                     log("Won " + difficulty);
                     var stars = rewardForDifficulty(difficulty);
                     increaseCurrency(stars);
@@ -1092,15 +1124,10 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     resetDifficulty(difficulty);
                 } 
                 else {
-                    stateLabel.text = "Solution is incorrect!";
+                    if(fullBoard)
+                        stateLabel.text = "Solution is incorrect!";
 
-                    for (var wrongCell of checkResult[1]) {
-                        var row = wrongCell[0];
-                        var column = wrongCell[1];
-                        var wrongSquare = gameGrid.children[row * 9 + column];
-                        log("(" + row + "," + column + "): " + wrongSquare.children[0].text);
-                        wrongSquare.backgroundColor = Color.fromRgb(0.7, 0.3, 0.3);
-                    }
+                    markInvalidCells(checkResult[1]);
                 }
             }
         });
@@ -1125,10 +1152,13 @@ var createButtonsGrid = (difficulty) => {
             if(selectedSquare === null || isFinished(difficulty))
                 return;
 
-            log("Pressed Clear for cell " + "(" + selectedSquare.row + "," + selectedSquare.column + ")");
-
             clearCell(board, selectedSquare.row, selectedSquare.column, selectedSquare.content);
+            
             resetBackgroundColors();
+
+            var checkResult = checkBoard(board);
+            if(checkResult[1].size > 0)
+                markInvalidCells(checkResult[1]);
         }
     });
     
@@ -1320,11 +1350,7 @@ var clearAndSetBoard = (difficulty) => {
 }
 
 var checkBoard = (board) => {
-    if(hasAllNumbers(board)) {
-        return isSolved(board);
-    }
-    
-    return (false, new Set());
+    return checkForDuplicates(board, hasAllNumbers(board));
 }
 
 var setNormalNumber = (number, cell, gridCellContent) => {
@@ -1454,22 +1480,6 @@ var clearCell = (board, r, c, gridCellContent) => {
 //#region Sudoku Game Utility
 var getBoardNum = (row, col) => row * ROWS + col;
 
-var prettyPrintBoard = (board) => {
-    log(" - - - - - - - - - - - -");
-    for(let r = 0; r < ROWS; r++) {
-        var row = '| ';
-        for(let c = 0; c < COLS; c++) {
-            row += board[getBoardNum(r, c)].number + " ";
-            if((c + 1) % 3 == 0)
-                row += '| ';
-        }
-        log(row)
-
-        if((r + 1) % 3 == 0)
-        log(" - - - - - - - - - - - -");
-    }
-}
-
 /**
  * Checks if the cell has no valid Sudoku number (pencilmarks do not count!)
  * @param {*} cell 
@@ -1489,19 +1499,28 @@ var hasAllNumbers = (board) => {
     return true;
 }
 
-var isSolved = (board) => {
-    var correct = true;
+/**
+ * Checks a given board for numbers violating the Sudoku rules, so appearing more than once in a row, column or box.
+ * Can be used to check if a board is solved, if all cells have a number.
+ * It will check for every rule violation and not abort early.
+ * @param {*} board The board to be checked
+ * @param {*} fullBoard If the board has numbers in every cell
+ * @returns An array where the first entry indicates if the board is in a correctly solved state (impossible if fullBoard is false) 
+ * and the second entry is an array holding [row, column] pairs of all numbers violating the rules (empty if solved)
+ */
+var checkForDuplicates = (board, fullBoard) => {
+    var correct = fullBoard;
     var wrongCells = new Set();
 
     // Check rows
     for(let r = 0; r < ROWS; r++) {
         for (let rc = 0; rc < COLS; rc++) {
             var currentNumber = board[getBoardNum(r, rc)].number;
-            if(currentNumber < 1) {
-                return [false, new Set()];
-            }
+            if(currentNumber < 1)
+                continue;
             for(let rcc = rc + 1; rcc < COLS; rcc++) {
-                if(currentNumber == board[getBoardNum(r, rcc)].number) {
+                var rowCompareNumber = board[getBoardNum(r, rcc)].number;
+                if(currentNumber == rowCompareNumber) {
                     correct = false;
                     wrongCells.add([r, rc]);
                     wrongCells.add([r, rcc]);
@@ -1514,11 +1533,11 @@ var isSolved = (board) => {
     for(let c = 0; c < COLS; c++) {
         for (let cr = 0; cr < ROWS; cr++) {
             var currentNumber = board[getBoardNum(cr, c)].number;
-            if(currentNumber < 1) {
-                return [false, new Set()];
-            }
+            if(currentNumber < 1)
+                continue;
             for(let crc = cr + 1; crc < ROWS; crc++) {
-                if(currentNumber == board[getBoardNum(crc, c)].number) {
+                var columnCompareNumber = board[getBoardNum(crc, c)].number;
+                if(currentNumber == columnCompareNumber) {
                     correct = false;
                     wrongCells.add([cr, c]);
                     wrongCells.add([crc, c]);
@@ -1533,17 +1552,15 @@ var isSolved = (board) => {
             for(let br = 0; br < BOX_SIZE; br++) {
                 for(let bc = 0; bc < BOX_SIZE; bc++) {
                     var currentNumber = board[getBoardNum(bri + br, bci + bc)].number;
-                    if(currentNumber < 1) {
-                        return [false, new Set()];
-                    }
+                    if(currentNumber < 1)
+                        continue;
                     for(let brc = 0; brc < BOX_SIZE; brc++) {
                         for(let bcc = 0; bcc < BOX_SIZE; bcc++) {
-                            
                             if(brc == br && bcc == bc)
                                 continue;
 
-                            var compareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
-                            if(currentNumber == compareNumber) {
+                            var boxCompareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
+                            if(currentNumber == boxCompareNumber) {
                                 correct = false;
                                 wrongCells.add([bri + br, bci + bc]);
                                 wrongCells.add([bri + brc, bci + bcc]);
@@ -1762,7 +1779,7 @@ var getPermutationMapping = (size, includeFixedZero) => {
     // This has the potential for a lot (> 1e10 if somebody else's math is correct) of combinations, so you shouldn't really see any repeat or anything looking that familiar :)
     var percentage = 0.5;
 
-    //prettyPrintBoard(board);
+    //logBoard(board);
     
     var rotate = Math.random() > percentage;
     if(rotate) {
@@ -1770,7 +1787,7 @@ var getPermutationMapping = (size, includeFixedZero) => {
         if(numRotations > 0) {
             rotateBoard(board, numRotations);
             //log("rotated board " + numRotations + " times");
-            //prettyPrintBoard(board);
+            //logBoard(board);
         }      
     }
     
@@ -1778,42 +1795,42 @@ var getPermutationMapping = (size, includeFixedZero) => {
     if(mirrorHorizontally) {
         mirrorBoardHorizontally(board);
         //log("mirrored horizontally");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
         
     var mirrorVertically = Math.random() > percentage;
     if(mirrorVertically) {
         mirrorBoardVertically(board);
         //log("mirrored vertically");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     var permutateRowsGlobal = Math.random() > percentage;
     if(permutateRowsGlobal) {
         permutateRowsGlobally(board);
         //log("permutated rows globally");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     var permutateRowsBlock = Math.random() > percentage;
     if(permutateRowsBlock) {
         permutateRowsBlockwise(board);
         //log("permutated rows blockwise");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     var permutateColumnsGlobal = Math.random() > percentage;
     if(permutateColumnsGlobal) {
         permutateColumnsGlobally(board);
         //log("permutated columns globally");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     var permutateColumnsBlock = Math.random() > percentage;
     if(permutateColumnsBlock) {
         permutateColumnsBlockwise(board);
         //log("permutated columns blockwise");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     
@@ -1821,7 +1838,7 @@ var getPermutationMapping = (size, includeFixedZero) => {
     if(permutateNums) {
         permutateNumbers(board);
         //log("permutated numbers");
-        //prettyPrintBoard(board);
+        //logBoard(board);
     }
 
     return board;
@@ -1829,3 +1846,29 @@ var getPermutationMapping = (size, includeFixedZero) => {
 
 //#endregion
 
+//#region DEBUG
+var logObject = (object) => {
+    var output = '';
+    for (var property in object) {
+        output += property + ': ' + object[property]+'; ';
+    }
+    log("object: " + output);
+}
+
+var logBoard = (board) => {
+    for(var r = 0; r < ROWS; r++){
+        log("-------------------------------------");
+
+        currentRowCells = []
+        for(var c = 0; c < COLS; c++){
+            var cell = board[r * 9 + c];
+            currentRowCells.push(cell.number < 1 ? ' ' : cell.number);
+            currentRowCells.push('|');
+        }
+
+        log('| ' + currentRowCells.join(' '));
+    }
+
+    log("-------------------------------------");
+}
+//#endregion
