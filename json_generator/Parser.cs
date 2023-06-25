@@ -39,6 +39,7 @@ namespace UpdateJson
                 GetName = (l) => GetTranslation(engine, "name", l, name, getName),
                 GetDescription = (l) => GetTranslation(engine, "description", l, description, getDescription),
                 Version = TryGetString(engine, "version", out string versionStr) && int.TryParse(versionStr, out int version) ? version.ToString() : "1",
+                ReleaseOrder = TryGetString(engine, "releaseOrder", out string releaseOrderStr) && int.TryParse(releaseOrderStr, out int releaseOrder) ? releaseOrder.ToString() : "1",
             };
         }
 
@@ -64,7 +65,8 @@ namespace UpdateJson
                         identifier.Name == "name" ||
                         identifier.Name == "description" ||
                         identifier.Name == "authors" ||
-                        identifier.Name == "version")
+                        identifier.Name == "version" ||
+                        identifier.Name == "releaseOrder")
                     {
                         AssertLiterals(identifier.Name, variableDeclarator.Init);
                         nodes.Add(element);
@@ -149,9 +151,10 @@ namespace UpdateJson
                 foreach (var child in node.ChildNodes)
                     AssertLiterals(name, child);
             }
-
-            if (node.Type != Esprima.Ast.Nodes.Literal)
+            else if (node.Type != Esprima.Ast.Nodes.Literal)
+            {
                 ThrowInvalidLiteral(name);
+            }
         }
 
         private static void ThrowInvalidLiteral(string name)
