@@ -8,7 +8,8 @@ var id = "weierstrass-product-sine";
 var name = "Weierstraß Sine Product";
 var description = "Exploit the inaccuracy of sine's product representation, a result due to Euler which was rigorously proved later by Weierstraß using his famous Factorization Theorem.\n\nIntuitively, the idea behind this formula is to factorize sine using its roots (sine has zeros at each multiple of π), just as one would do for a polynomial.\n\nThe product s_n represents only the n first factors of this infinite product (together with the root at x=0), which means there is some error between s_n(x) and the actual sin(x), depending on n and x. Note that this truncated product s_n approximates sin(x) better for bigger n and smaller x, in particular the approximation becomes bad for a fixed n when x gets large in the sense that the ratio s_n(x)/sin(x) diverges for x -> infty.\n\nHere, the derivative of q with respect to time is set to s_n(χ)/sin(χ) i.e. the ratio from before evaluated at χ (chi), which itself is a value depending on n. Note that increasing n both increases χ and the accuracy of the approximation s_n.";
 var authors = "xelaroc (AlexCord#6768)";
-var version = 2;
+var version = 3;
+var releaseOrder = "1";
 
 var q = BigNumber.ONE;
 var chi = BigNumber.ONE;
@@ -203,6 +204,7 @@ var getTertiaryEquation = () => {
 var getPublicationMultiplier = (tau) => tau.isZero ? BigNumber.ONE : tau.pow(BigNumber.from(1.5));
 var getPublicationMultiplierFormula = (symbol) => "{" + symbol + "}^{1.5}";
 var getTau = () => currency.value.pow(BigNumber.from(0.1));
+var getCurrencyFromTau = (tau) => [tau.max(BigNumber.ONE).pow(10), currency.symbol];
 var get2DGraphValue = () => currency.value.sign * (BigNumber.ONE + currency.value.abs()).log10().toNumber();
 
 var getN = (level) => BigNumber.from(level);
