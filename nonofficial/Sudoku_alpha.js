@@ -1252,6 +1252,10 @@ var createPopupUI = (difficulty, board) => {
         })
     });
 
+    var checkResult = checkBoard(board);
+    if(checkResult[1].size > 0)
+        markInvalidCells(checkResult[1]);
+
     return popup;
 }
 
