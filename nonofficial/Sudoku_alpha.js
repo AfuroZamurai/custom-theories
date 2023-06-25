@@ -925,15 +925,15 @@ var getBackgroundColor = (preset) => {
     switch(game.settings.theme) {
         case Theme.STANDARD:
             if(preset)
-                return Color.fromRgb(0.3, 0.3, 0.3);
+                return Color.fromRgb(0.2, 0.2, 0.2);
             return Color.fromRgb(0.4, 0.4, 0.4);
         case Theme.DARK:
             if(preset)
-                return Color.fromRgb(0.1, 0.1, 0.1);
+                return Color.fromRgb(0.3, 0.3, 0.3);
             return Color.fromRgb(0, 0, 0);
         case Theme.LIGHT:
             if(preset)
-                return Color.fromRgb(0.9, 0.9, 0.9);
+                return Color.fromRgb(0.7, 0.7, 0.7);
             return Color.fromRgb(1, 1, 1);
     }
 }
