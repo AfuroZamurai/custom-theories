@@ -429,7 +429,7 @@ var getSummation = (limit) => {
         prevN = limit;
     }
 
-    return BigNumber.from(sum).sqrt();
+    return BigNumber.from(sum).pow(1/getRootExp(m_rootExp.level));
 }
 
 var getApproximation = () => {
