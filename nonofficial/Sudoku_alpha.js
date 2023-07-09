@@ -18,16 +18,33 @@ var id = "sudoku_theory_alpha";
 var name = "Sudoku Alpha";
 var description = "A minigame theory which allows you to play different difficulties of sudoku (alpha version, still missing a lot of the ultimately planned features)";
 var authors = "AfuroZamurai";
-var version = 1.6;
+var version = 1.7;
 
 var currency;
+
 var easy, medium, hard, expert, omega, devilish;
+
+/**
+ * A board is containing 81 cells, with each cell being the following datastructure (TODO: change to a faster representation)
+ * 
+ * cell = {
+            number: number,
+            isGiven: number > 0,
+            cornerMarks: [],
+            centerMarks: []
+        }
+ */
 var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
+
+var easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
+var easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
 
 // intentionally almost completed board for testing purposes
 var test;
 var testBoard;
 
+var testUndoStack;
+var testRedoStack;
 
 
 const TEST = "Test";
@@ -55,10 +72,15 @@ const NORMAL_MODE = 0;
 const CORNER_MODE = 1;
 const CENTER_MODE = 2;
 
+const UNDO_MODE = 0;
+const REDO_MODE = 1;
+
 var isPopupOpen = false;
 
 var gameGrid = null;
 var hintLabel;
+var undoButton;
+var redoButton;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -808,22 +830,48 @@ var tick = (elapsedTime, multiplier) => {
 
 
 var getInternalState = () => {
-    // save all difficulty board states
+    // save all difficulty board states and undo/redo stacks
     log("Saving...");
-    return JSON.stringify([easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard]);
+    var saveArray = [easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard,
+        easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack, testUndoStack,
+        easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack];
+    var saveState = JSON.stringify(saveArray);
+
+    //log(saveState);
+
+    return saveState;
 }
 
 var setInternalState = (state) => {
-    // restore all difficulty board states
+    // restore all difficulty board states and undo/redo stacks
     log("Restoring...");
-    var boards = JSON.parse(state);
-    easyBoard = boards[0];
-    mediumBoard = boards[1];
-    hardBoard = boards[2];
-    expertBoard = boards[3];
-    omegaBoard = boards[4];
-    devilishBoard = boards[5];
-    testBoard = boards[6];
+    var saveState = JSON.parse(state);
+
+    //log(saveState);
+
+    easyBoard = saveState[0];
+    mediumBoard = saveState[1];
+    hardBoard = saveState[2];
+    expertBoard = saveState[3];
+    omegaBoard = saveState[4];
+    devilishBoard = saveState[5];
+    testBoard = saveState[6];
+
+    easyUndoStack = saveState[7];
+    mediumUndoStack = saveState[8];
+    hardUndoStack = saveState[9];
+    expertUndoStack = saveState[10];
+    omegaUndoStack = saveState[11];
+    devilishUndoStack = saveState[12];
+    testUndoStack = saveState[13];
+
+    easyRedoStack = saveState[14];
+    mediumRedoStack = saveState[15];
+    hardRedoStack = saveState[16];
+    expertRedoStack = saveState[17];
+    omegaRedoStack = saveState[18];
+    devilishRedoStack = saveState[19];
+    testRedoStack = saveState[20];
 }
 
 var getPrimaryEquation = () => {
@@ -872,6 +920,7 @@ var increaseCurrency = (reward) => {
 }
 
 var resetDifficulty = (difficulty) => {
+    resetUndoRedoStacks(difficulty);
     switch(difficulty) {
         case EASY:
             easyBoard = null;
@@ -1004,6 +1053,17 @@ var markInvalidCells = (wrongCells) => {
     }
 }
 
+var UpdateBoardAndSquare = (cell, cellIndex) => {
+    board[cellIndex] = cell;
+
+    var square = GetSquare(cellIndex);
+    updateSquareFromCell(square, cell);
+}
+
+var GetSquare = (index) => {
+    return gameGrid.children[index];
+}
+
 let markFontSize = 12;
 
 var createSquare = (i, j, cell) => {
@@ -1111,6 +1171,12 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
 
                 log("clicked " + i + " for mode " + textForMode(mode) + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
 
+                var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
+                var cell = board[cellIndex];
+                
+                addToUndoStack(difficulty, cell, cellIndex);
+                resetRedoStack(difficulty);
+
                 setNumber(i, board, selectedSquare.row, selectedSquare.column);
                 if(mode != NORMAL_MODE)
                     return;
@@ -1125,6 +1191,7 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     increaseCurrency(stars);
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
                     resetDifficulty(difficulty);
+                    undoButton.isEnabled = false;
                 } 
                 else {
                     if(fullBoard)
@@ -1154,6 +1221,12 @@ var createButtonsGrid = (difficulty) => {
         onClicked: () => {
             if(selectedSquare === null || isFinished(difficulty))
                 return;
+
+            var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
+            var cell = board[cellIndex];
+            
+            addToUndoStack(difficulty, cell, cellIndex);
+            resetRedoStack(difficulty);
 
             clearCell(board, selectedSquare.row, selectedSquare.column, selectedSquare.content);
             
@@ -1188,25 +1261,31 @@ var createButtonsGrid = (difficulty) => {
         }
     });
 
-    buttons[3] = ui.createButton({
+    undoButton = ui.createButton({
         row: 1,
         column: 0,
         text: "Undo",
         onClicked: () => {
             log("Pressed Undo");
+
+            undo(difficulty);
         }
     });
-    buttons[3].isEnabled = false;
+    undoButton.isEnabled = getStackForModeAndDifficulty(difficulty, UNDO_MODE).length > 0;
+    buttons[3] = undoButton;
 
-    buttons[4] = ui.createButton({
+    redoButton = ui.createButton({
         row: 1,
         column: 1,
         text: "Redo",
         onClicked: () => {
             log("Pressed Redo");
+
+            redo(difficulty);
         }
     });
-    buttons[4].isEnabled = false;
+    redoButton.isEnabled = getStackForModeAndDifficulty(difficulty, REDO_MODE).length > 0;
+    buttons[4] = redoButton;
 
     buttons[5] = ui.createButton({
         row: 1,
@@ -1217,7 +1296,7 @@ var createButtonsGrid = (difficulty) => {
             hintLabel.text = "Hint: not implemented";
         }
     });
-    buttons[3].isEnabled = false;
+    buttons[5].isEnabled = false;
 
     let buttonGrid = ui.createGrid({
         columnDefinitions: ["1*", "1*", "1*"],
@@ -1377,6 +1456,20 @@ var setNormalNumber = (number, cell, gridCellContent) => {
     gridCellContent.children[0].text = `${number}`
 }
 
+var setNormalNumberFromCell = (cell, gridCellContent) => {
+    if(cell.number < 1) {
+        gridCellContent.children[0].text = "";
+        return;
+    }
+
+    var marksGrid = gridCellContent.children[1];
+    for(var j = 0; j < marksGrid.children.length; j++) {
+        marksGrid.children[j].text = ""
+    }
+
+    gridCellContent.children[0].text = `${cell.number}`
+}
+
 var clearCornerNumbers = (gridCellContent) => {
     for (let i of [0, 1, 3, 4]) {
         gridCellContent.children[1].children[i].text = "";
@@ -1424,6 +1517,23 @@ var setCornerNumber = (number, cell, gridCellContent) => {
     setCornerNumbers(cell, selectedSquare.content);
 }
 
+var setCornerNumbersFromCell = (cell, square, clearBeforeSet) => {
+    if(!isEmpty(cell))
+        return;
+
+    if(cell.cornerMarks.length == 0)
+        return;
+  
+    if(clearBeforeSet)
+        clearCornerNumbers(square.content);
+
+    setCornerNumbers(cell, square.content);
+}
+
+var clearCenterNumbers = (gridCellContent) => {
+    gridCellContent.children[1].children[2].text = "";
+}
+
 var setCenterNumbers = (cell, gridCellContent) => {
     gridCellContent.children[1].children[2].text = cell.centerMarks.join('');
 }
@@ -1448,6 +1558,16 @@ var setCenterNumber = (number, cell, gridCellContent) => {
     setCenterNumbers(cell, gridCellContent);
 }
 
+var setCenterNumbersFromCell = (cell, square) => {
+    if(!isEmpty(cell))
+        return;
+
+    if(cell.centerMarks.length == 0)
+        return;
+
+    setCenterNumbers(cell, square.content);
+}
+
 var setNumber = (number, board, r, c) => {
     if(selectedSquare != null) {
         var cell = board[getBoardNum(r, c)];
@@ -1467,15 +1587,309 @@ var setNumber = (number, board, r, c) => {
     }
 }
 
+/**
+ * Updates the UI of a square according to the values of a given cell
+ * @param {*} square 
+ * @param {*} cell 
+ */
+var updateSquareFromCell = (square, cell) => { 
+    clearSquare(square.content);
+
+    setNormalNumberFromCell(cell, square.content);
+
+    if(cell.number >= 1)
+        return;
+
+    setCornerNumbersFromCell(cell, square, false);
+    setCenterNumbersFromCell(cell, square);
+}
+
+/**
+ * Resets the UI for a square (removing any number, corner- and center marks)
+ * @param {*} gridCellContent 
+ */
+var clearSquare = (gridCellContent) => {
+    gridCellContent.children[0].text = "";
+    clearCornerNumbers(gridCellContent);
+    clearCenterNumbers(gridCellContent);
+}
+
+/**
+ * Resets a cell and updates the UI accordingly
+ * @param {*} board 
+ * @param {*} r 
+ * @param {*} c 
+ * @param {*} gridCellContent 
+ */
 var clearCell = (board, r, c, gridCellContent) => {
     var cell = board[getBoardNum(r, c)];
     cell.number = 0;
-    cell.cornerMarks = []
-    cell.centerMarks = []
-    gridCellContent.children[0].text = "";
-    clearCornerNumbers(gridCellContent);
-    gridCellContent.children[1].children[2].text = "";
+    cell.cornerMarks = [];
+    cell.centerMarks = [];
+    clearSquare(gridCellContent);
 }
+
+var increaseCurrency = (reward) => {
+    currency.value += reward;
+}
+
+var getStackForModeAndDifficulty = (difficulty, operationMode) => {
+    var difficultyStack;
+    switch(difficulty) {
+        case EASY:
+            if(operationMode == UNDO_MODE){
+                if(easyUndoStack == null)
+                    easyUndoStack = [];
+                
+                difficultyStack = easyUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(easyRedoStack == null)
+                    easyRedoStack = [];
+                
+                difficultyStack = easyRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case MEDIUM:
+            if(operationMode == UNDO_MODE){
+                if(mediumUndoStack == null)
+                    mediumUndoStack = [];
+                
+                difficultyStack = mediumUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(mediumRedoStack == null)
+                    mediumRedoStack = [];
+                
+                difficultyStack = mediumRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case HARD:
+            if(operationMode == UNDO_MODE){
+                if(hardUndoStack == null)
+                    hardUndoStack = [];
+                
+                difficultyStack = hardUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(hardRedoStack == null)
+                    hardRedoStack = [];
+                
+                difficultyStack = hardRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case EXPERT:
+            if(operationMode == UNDO_MODE){
+                if(expertUndoStack == null)
+                    expertUndoStack = [];
+                
+                difficultyStack = expertUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(expertRedoStack == null)
+                    expertRedoStack = [];
+                
+                difficultyStack = expertRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case OMEGA:
+            if(operationMode == UNDO_MODE){
+                if(omegaUndoStack == null)
+                    omegaUndoStack = [];
+                
+                difficultyStack = omegaUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(omegaRedoStack == null)
+                    omegaRedoStack = [];
+                
+                difficultyStack = omegaRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case DEVILISH:
+            if(operationMode == UNDO_MODE){
+                if(devilishUndoStack == null)
+                    devilishUndoStack = [];
+                
+                difficultyStack = devilishUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(devilishRedoStack == null)
+                    devilishRedoStack = [];
+                
+                difficultyStack = devilishRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        case TEST:
+            if(operationMode == UNDO_MODE){
+                if(testUndoStack == null)
+                    testUndoStack = [];
+                
+                difficultyStack = testUndoStack;
+            } 
+            else if (operationMode == REDO_MODE) {
+                if(testRedoStack == null)
+                    testRedoStack = [];
+                
+                difficultyStack = testRedoStack;
+            }
+            else{
+                throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            }
+            break;
+        default:
+            throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
+    }
+
+    return difficultyStack;
+}
+
+var resetUndoRedoStacks = (difficulty) => {
+    switch(difficulty) {
+        case EASY:
+            easyUndoStack = [];
+            easyRedoStack = [];
+            break;
+        case MEDIUM:
+            mediumUndoStack = [];
+            mediumRedoStack = [];
+            break;
+        case HARD:
+            hardUndoStack = [];
+            hardRedoStack = [];
+            break;
+        case EXPERT:
+            expertUndoStack = [];
+            expertRedoStack = [];
+            break;
+        case OMEGA:
+            omegaUndoStack = [];
+            omegaRedoStack = [];
+            break;
+        case DEVILISH:
+            devilishUndoStack = [];
+            devilishRedoStack = [];
+            break;
+        case TEST:
+            testUndoStack = [];
+            testRedoStack = [];
+            break;
+        default:
+            throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
+    }
+}
+
+var resetRedoStack = (difficulty) => {
+    var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
+    difficultyRedoStack = [];
+    redoButton.isEnabled = false;
+}
+
+/**
+ * For a given difficulty adds a cell to the stack containing all the previous states.
+ * @param {*} difficulty The difficulty of the puzzle to select the correct stack
+ * @param {*} cell The cell before an action took place, to save it for future restoration
+ * @param {number} cellIndex The index of the saved cell in the board
+ */
+var addToUndoStack = (difficulty, cell, cellIndex) => {
+    var undoState = {
+        cellIndex: cellIndex,
+        cell: deepcopyCell(cell)
+    };
+
+    var difficultyUndoStack = getStackForModeAndDifficulty(difficulty, UNDO_MODE);
+    difficultyUndoStack.push(undoState);
+
+    undoButton.isEnabled = true;
+}
+
+/**
+ * For a given difficulty adds a cell to the stack containing all the states reverted by undo operations.
+ * @param {*} difficulty The difficulty of the puzzle to select the correct stack
+ * @param {*} cell The cell before an action took place, to save it for future restoration
+ * @param {number} cellIndex The index of the saved cell in the board
+ */
+var addToRedoStack = (difficulty, cell, cellIndex) => {
+    var redoState = {
+        cellIndex: cellIndex,
+        cell: deepcopyCell(cell)
+    };
+
+    var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
+    difficultyRedoStack.push(redoState);
+
+    redoButton.isEnabled = true;
+}
+
+/**
+ * Undo the last taken action. This will pop the latest entry from the undo stack, update the board, update the UI and add the cell to the redo stack.
+ * @param {*} difficulty The difficulty stack to get the previous state from
+ */
+var undo = (difficulty) => {
+    restoreState(difficulty, UNDO_MODE);
+}
+
+/**
+ * Redo the last undone action. This will pop the latest entry from the redo stack, update the board, update the UI and add the cell to the undo stack.
+ * @param {*} difficulty The difficulty stack to get the previous state from
+ */
+var redo = (difficulty) => {
+    restoreState(difficulty, REDO_MODE);
+}
+
+var restoreState = (difficulty, operationMode) => {
+    if(operationMode != UNDO_MODE && operationMode != REDO_MODE)
+        throw new Error("Unrecognized operation mode " + operationMode + "; cannot proceed");
+    
+    var difficultyStack = getStackForModeAndDifficulty(difficulty, operationMode);
+    var previousState = difficultyStack.pop();
+    var currentState = board[previousState.cellIndex];
+
+    var operation = operationMode == UNDO_MODE ? "Undo" : "Redo";
+    logObject(previousState, operation + " to following cell state: ");
+    logObject(previousState.cell, "Cell: ");
+
+    UpdateBoardAndSquare(previousState.cell, previousState.cellIndex);
+
+    if(operationMode == UNDO_MODE) {
+        addToRedoStack(difficulty, currentState, previousState.cellIndex);
+    }
+    else
+    {
+        addToUndoStack(difficulty, currentState, previousState.cellIndex);
+    }
+
+    log(difficultyStack.length);
+    if(difficultyStack.length == 0) {
+        var operationButton = operationMode == UNDO_MODE ? undoButton : redoButton;
+        operationButton.isEnabled = false;
+    }
+        
+    // Update invalid markers
+    resetBackgroundColors();
+    var checkResult = checkBoard(board);
+    if(checkResult[1].size > 0)
+        markInvalidCells(checkResult[1]);
+}
+
 //#endregion
 
 
@@ -1635,6 +2049,11 @@ var getRandomBoard = (difficulty) => {
     }
 
     return boardFromString(boardString);
+}
+
+var deepcopyCell = (cell) => {
+    var cellcopy = JSON.parse(JSON.stringify(cell));
+    return cellcopy;
 }
 
 var deepcopy = (board) => {
@@ -1854,12 +2273,12 @@ var getPermutationMapping = (size, includeFixedZero) => {
 //#endregion
 
 //#region DEBUG
-var logObject = (object) => {
+var logObject = (object, prefix = "") => {
     var output = '';
     for (var property in object) {
         output += property + ': ' + object[property]+'; ';
     }
-    log("object: " + output);
+    log(prefix + "object: " + output);
 }
 
 var logBoard = (board) => {
