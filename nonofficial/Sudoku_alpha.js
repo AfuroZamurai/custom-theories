@@ -56,6 +56,7 @@ const CENTER_MODE = 2;
 var isPopupOpen = false;
 
 var gameGrid = null;
+var hintLabel;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -1230,7 +1231,7 @@ var createPopupUI = (difficulty, board) => {
 
     var timer = ui.createLatexLabel({text: "Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 5, 0, 5)});
     var bestTimeLabel = ui.createLatexLabel({text: "Best Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
-    var hintLabel = ui.createLatexLabel({text: "Hint: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
+    hintLabel = ui.createLatexLabel({text: "Hint: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
     var stateLabel = ui.createLatexLabel({text: "Solve for " + rewardForDifficulty(difficulty) + " stars", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
 
     var numberButtonGrid = createNumberButtonsGrid(difficulty, board, stateLabel);
