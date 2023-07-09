@@ -9,8 +9,8 @@ import { theory } from "./api/Theory";
 import { TextAlignment } from "./api/ui/properties/TextAlignment";
 import { Thickness } from "./api/ui/properties/Thickness";
 import { Color } from "./api/ui/properties/Color";
-import { Theme } from "../../../TheorySDK.Win.1.4.21/api/Settings";
-import { LayoutOptions } from "../../../TheorySDK.Win.1.4.21/api/ui/properties/LayoutOptions";
+import { Theme } from ".api/Settings";
+import { LayoutOptions } from "./api/ui/properties/LayoutOptions";
 //#endregion
 
 //#region Globals
@@ -27,6 +27,8 @@ var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
 // intentionally almost completed board for testing purposes
 var test;
 var testBoard;
+
+
 
 const TEST = "Test";
 const EASY = "Easy";
