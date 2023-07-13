@@ -850,7 +850,9 @@ var init = () => {
 var tick = (elapsedTime, multiplier) => {
     if (gameGrid && gameGrid.width > 0 && gameGrid.heightRequest < 0) 
         gameGrid.heightRequest = Math.max(gameGrid.width, 0);
-    
+
+    //log("elapsedTime: " + elapsedTime + ", multiplier: " + multiplier + " , elapsedTime * multiplier = " + elapsedTime * multiplier);
+
     if(currentStartTime != null) {
         updateTimerLabel();
     }
@@ -860,6 +862,10 @@ var tick = (elapsedTime, multiplier) => {
 var getInternalState = () => {
     // save all difficulty board states and undo/redo stacks
     log("Saving...");
+
+    // Save currently running timer in case of shutdown and reset current start time
+    updateTimerInSave();
+
     var saveArray = [easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard,
         easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack, testUndoStack,
         easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack,
@@ -875,6 +881,7 @@ var getInternalState = () => {
 var setInternalState = (state) => {
     // restore all difficulty board states and undo/redo stacks
     log("Restoring...");
+
     var saveState = JSON.parse(state);
 
     //log(saveState);
@@ -1100,10 +1107,29 @@ var markInvalidCells = (wrongCells) => {
     }
 }
 
-var updateTimer = (timer) => {
-    //logObject(timer);
-    var timerString = TimerAsString(timer);
-    timerLabel.text = "Time: " + timerString;
+/**
+ * Gets the currently used time for the open puzzle (if existing) and updates the timer.
+ * It will also reset the current start time to now.
+ * @returns 
+ */
+var updateTimerInSave = () => {
+    // No puzzle open or not started
+    if(difficulty == undefined || difficulty == null || currentStartTime == null)
+        return;
+
+    var timer = getTimerForDifficulty(difficulty);
+
+    log(timer.time);
+
+    var elapsedTime = getElapsedTime(timer);
+
+    timer.time = elapsedTime;
+
+    log(timer.time);
+    
+    // TODO: save hints when implemented
+
+    currentStartTime = Date.now();
 }
 
 var UpdateBoardAndSquare = (cell, cellIndex) => {
@@ -1223,7 +1249,7 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     return;
 
                 log("clicked " + i + " for mode " + textForMode(mode) + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
-                log("number clicked test timer: " + testTimer.time);
+
                 if(currentStartTime == null) {
                     currentStartTime = Date.now();
                 }
@@ -1420,6 +1446,9 @@ var createPopupUI = (difficulty, board) => {
 
                 currentStartTime = null;
             }
+            else {
+                difficulty == undefined;
+            }
         }
     });
 
@@ -1525,8 +1554,6 @@ var clearAndSetBoard = (difficulty) => {
     popup.hide();
     popup = createPopupUI(difficulty, board);
     popup.show();
-
-    log("replay popup created and shown: " + testTimer.time);
 }
 
 var checkBoard = (board) => {
@@ -2177,7 +2204,9 @@ var updateTimerLabel = () => {
         hints: timer.hints
     };
 
-    updateTimer(tempTimer);
+    //logObject(tempTimer);
+    var timerString = TimerAsString(tempTimer);
+    timerLabel.text = "Time: " + timerString;
 }
 
 /**
