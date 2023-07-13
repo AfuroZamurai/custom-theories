@@ -23,6 +23,7 @@ var version = 1.7;
 var currency;
 
 var easy, medium, hard, expert, omega, devilish;
+var difficulty;
 
 /**
  * A board is containing 81 cells, with each cell being the following datastructure (TODO: change to a faster representation)
@@ -39,6 +40,10 @@ var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
 var easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
 var easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
 
+var easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer;
+var easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer;
+var currentStartTime;
+
 // intentionally almost completed board for testing purposes
 var test;
 var testBoard;
@@ -46,6 +51,8 @@ var testBoard;
 var testUndoStack;
 var testRedoStack;
 
+var testTimer;
+var testBestTimer;
 
 const TEST = "Test";
 const EASY = "Easy";
@@ -81,6 +88,8 @@ var gameGrid = null;
 var hintLabel;
 var undoButton;
 var redoButton;
+var timerLabel;
+var bestTimeLabel;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -727,8 +736,11 @@ var init = () => {
         easy.getInfo = (amount) => getInfo();
         easy.bought = (amount) => { 
             easy.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = EASY;
                 showSudokuPopup(EASY);
+            }
+                
         };
     }
 
@@ -741,8 +753,10 @@ var init = () => {
         medium.getInfo = (amount) => getInfo();
         medium.bought = (amount) => { 
             medium.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = MEDIUM;
                 showSudokuPopup(MEDIUM);
+            }
         };
     }
 
@@ -755,8 +769,10 @@ var init = () => {
         hard.getInfo = (amount) => getInfo();
         hard.bought = (amount) => { 
             hard.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = HARD;
                 showSudokuPopup(HARD);
+            }
         };
     }
 
@@ -769,8 +785,10 @@ var init = () => {
         expert.getInfo = (amount) => getInfo();
         expert.bought = (amount) => { 
             expert.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = EXPERT;
                 showSudokuPopup(EXPERT);
+            }
         };
     }
 
@@ -783,8 +801,10 @@ var init = () => {
         omega.getInfo = (amount) => getInfo();
         omega.bought = (amount) => { 
             omega.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = OMEGA;
                 showSudokuPopup(OMEGA);
+            }
         };
     }
 
@@ -797,8 +817,10 @@ var init = () => {
         devilish.getInfo = (amount) => getInfo();
         devilish.bought = (amount) => { 
             devilish.level -= amount;
-            if (!isPopupOpen) 
+            if (!isPopupOpen) {
+                difficulty = DEVILISH;
                 showSudokuPopup(DEVILISH);
+            }
         };
     }
 
@@ -811,8 +833,10 @@ var init = () => {
     test.getInfo = (amount) => getInfo();
     test.bought = (amount) => { 
         test.level -= amount;
-        if (!isPopupOpen) 
+        if (!isPopupOpen) {
+            difficulty = TEST;
             showSudokuPopup(TEST);
+        }
     };
 }
         
@@ -826,6 +850,10 @@ var init = () => {
 var tick = (elapsedTime, multiplier) => {
     if (gameGrid && gameGrid.width > 0 && gameGrid.heightRequest < 0) 
         gameGrid.heightRequest = Math.max(gameGrid.width, 0);
+    
+    if(currentStartTime != null) {
+        updateTimerLabel();
+    }
 }
 
 
@@ -834,7 +862,9 @@ var getInternalState = () => {
     log("Saving...");
     var saveArray = [easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard,
         easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack, testUndoStack,
-        easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack];
+        easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack,
+        easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer, testTimer,
+        easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer, testBestTimer];
     var saveState = JSON.stringify(saveArray);
 
     //log(saveState);
@@ -872,6 +902,22 @@ var setInternalState = (state) => {
     omegaRedoStack = saveState[18];
     devilishRedoStack = saveState[19];
     testRedoStack = saveState[20];
+
+    easyTimer = saveState[21];
+    mediumTimer = saveState[22];
+    hardTimer = saveState[23];
+    expertTimer = saveState[24];
+    omegaTimer = saveState[25];
+    devilishTimer = saveState[26];
+    testTimer = saveState[27];
+
+    easyBestTimer = saveState[28];
+    mediumBestTimer = saveState[29];
+    hardBestTimer = saveState[30];
+    expertBestTimer = saveState[31];
+    omegaBestTimer = saveState[32];
+    devilishBestTimer = saveState[33];
+    testBestTimer = saveState[34];
 }
 
 var getPrimaryEquation = () => {
@@ -921,6 +967,7 @@ var increaseCurrency = (reward) => {
 
 var resetDifficulty = (difficulty) => {
     resetUndoRedoStacks(difficulty);
+    resetTimer(difficulty);
     switch(difficulty) {
         case EASY:
             easyBoard = null;
@@ -1047,10 +1094,16 @@ var markInvalidCells = (wrongCells) => {
         var row = wrongCell[0];
         var column = wrongCell[1];
         var wrongSquare = gameGrid.children[row * 9 + column];
-        log("(" + row + "," + column + "): " + wrongSquare.content.children[0].text);
+        //log("(" + row + "," + column + "): " + wrongSquare.content.children[0].text);
         var isGiven = board[row * 9 + column].isGiven;
         wrongSquare.backgroundColor = getInvalidBackgroundColor(isGiven);
     }
+}
+
+var updateTimer = (timer) => {
+    //logObject(timer);
+    var timerString = TimerAsString(timer);
+    timerLabel.text = "Time: " + timerString;
 }
 
 var UpdateBoardAndSquare = (cell, cellIndex) => {
@@ -1170,6 +1223,10 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     return;
 
                 log("clicked " + i + " for mode " + textForMode(mode) + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
+                log("number clicked test timer: " + testTimer.time);
+                if(currentStartTime == null) {
+                    currentStartTime = Date.now();
+                }
 
                 var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
                 var cell = board[cellIndex];
@@ -1186,7 +1243,16 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                 var checkResult = checkBoard(board);
                 var fullBoard = hasAllNumbers(board);
                 if(checkResult[0] && fullBoard) {
-                    log("Won " + difficulty);
+                    var timer = getTimerForDifficulty(difficulty);
+                    var elapsedTime = getElapsedTime(timer);
+
+                    timer.time = elapsedTime;
+
+                    var timerString = TimerAsString(timer);
+
+                    UpdateTimerIfBetter(difficulty);
+
+                    log("Won " + difficulty + " in " + timerString);
                     var stars = rewardForDifficulty(difficulty);
                     increaseCurrency(stars);
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
@@ -1310,8 +1376,18 @@ var createButtonsGrid = (difficulty) => {
 var createPopupUI = (difficulty, board) => {
     var gameGrid = createGameGrid(board);
 
-    var timer = ui.createLatexLabel({text: "Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 5, 0, 5)});
-    var bestTimeLabel = ui.createLatexLabel({text: "Best Time: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
+    var currentTimer = getTimerForDifficulty(difficulty);
+    var currentTimerString = TimerAsString(currentTimer);
+
+    var timerString = "Time: " + currentTimerString;
+
+    var bestTimer = getBestTimerForDifficulty(difficulty);
+    var bestTimerReadable = TimerAsString(bestTimer);
+
+    var bestTimerString = "Best Time: " + bestTimerReadable;
+
+    timerLabel = ui.createLatexLabel({text: timerString, horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 5, 0, 5)});
+    bestTimeLabel = ui.createLatexLabel({text: bestTimerString, horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
     hintLabel = ui.createLatexLabel({text: "Hint: not included in Alpha", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
     var stateLabel = ui.createLatexLabel({text: "Solve for " + rewardForDifficulty(difficulty) + " stars", horizontalTextAlignment: TextAlignment.CENTER, margin: new Thickness(0, 3, 0, 5)});
 
@@ -1323,7 +1399,7 @@ var createPopupUI = (difficulty, board) => {
         closeOnBackgroundClicked: false,
         content: ui.createStackLayout({
             children: [
-                timer,
+                timerLabel,
                 bestTimeLabel,
                 hintLabel,
                 stateLabel,
@@ -1331,7 +1407,20 @@ var createPopupUI = (difficulty, board) => {
                 numberButtonGrid,
                 buttonGrid
             ]
-        })
+        }),
+        onDisappearing: () => {
+            log("Popup closed");
+
+            // When closed by us after pressing "Replay" timer is already taken care of
+            if(currentStartTime != null){
+                var timer = getTimerForDifficulty(difficulty);
+                var elapsedTime = getElapsedTime(timer);
+
+                timer.time = elapsedTime;
+
+                currentStartTime = null;
+            }
+        }
     });
 
     var checkResult = checkBoard(board);
@@ -1363,6 +1452,7 @@ var textForMode = (mode) => {
 //#region UI Sudoku Popup
 var showSudokuPopup = (difficulty) => {
     selectedSquare = null;
+    mode = NORMAL_MODE;
     board = getBoard(difficulty)
 
     var popup = createPopupUI(difficulty, board);
@@ -1425,6 +1515,8 @@ var getBoard = (difficulty) => {
 var clearAndSetBoard = (difficulty) => {
     board = null;
     selectedSquare = null;
+    mode = NORMAL_MODE;
+
     resetDifficulty(difficulty);
 
     board = getBoard(difficulty);
@@ -1433,6 +1525,8 @@ var clearAndSetBoard = (difficulty) => {
     popup.hide();
     popup = createPopupUI(difficulty, board);
     popup.show();
+
+    log("replay popup created and shown: " + testTimer.time);
 }
 
 var checkBoard = (board) => {
@@ -1888,6 +1982,245 @@ var restoreState = (difficulty, operationMode) => {
     var checkResult = checkBoard(board);
     if(checkResult[1].size > 0)
         markInvalidCells(checkResult[1]);
+}
+
+var getBestTimerForDifficulty = (difficulty) => {
+    switch(difficulty) {
+        case EASY:
+            if(easyBestTimer == null){
+                easyBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return easyBestTimer;
+        case MEDIUM:
+            if(mediumBestTimer == null){
+                mediumBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return mediumBestTimer;
+        case HARD:
+            if(hardBestTimer == null){
+                hardBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return hardBestTimer;
+        case EXPERT:
+            if(expertBestTimer == null){
+                expertBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return expertBestTimer;
+        case OMEGA:
+            if(omegaBestTimer == null){
+                omegaBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return omegaBestTimer;
+        case DEVILISH:
+            if(devilishBestTimer == null){
+                devilishBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return devilishBestTimer;
+        case TEST:
+            if(testBestTimer == null){
+                testBestTimer = {
+                    time: -1,
+                    hints: -1
+                };
+            }
+            return testBestTimer;
+        default:
+            throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
+    }
+}
+
+var getTimerForDifficulty = (difficulty) => {
+    //log("Getting timer for difficulty " + difficulty);
+    switch(difficulty) {
+        case EASY:
+            if(easyTimer == null){
+                easyTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return easyTimer;
+        case MEDIUM:
+            if(mediumTimer == null){
+                mediumTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return mediumTimer;
+        case HARD:
+            if(hardTimer == null){
+                hardTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return hardTimer;
+        case EXPERT:
+            if(expertTimer == null){
+                expertTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return expertTimer;
+        case OMEGA:
+            if(omegaTimer == null){
+                omegaTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return omegaTimer;
+        case DEVILISH:
+            if(devilishTimer == null){
+                devilishTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return devilishTimer;
+        case TEST:
+            if(testTimer == null){
+                testTimer = {
+                    time: 0,
+                    hints: 0
+                };
+            }
+            return testTimer;
+        default:
+            throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
+    }
+}
+
+var resetTimer = (difficulty) => {
+    currentStartTime = null;
+
+    log("Resetting timer for difficulty " + difficulty);
+    switch(difficulty) {
+        case EASY:
+            easyTimer.time = 0;
+            easyTimer.hints = 0;
+            break;
+        case MEDIUM:
+            mediumTimer.time = 0;
+            mediumTimer.hints = 0;
+            break;
+        case HARD:
+            hardTimer.time = 0;
+            hardTimer.hints = 0;
+            break;
+        case EXPERT:
+            expertTimer.time = 0;
+            expertTimer.hints = 0;
+            break;
+        case OMEGA:
+            omegaTimer.time = 0;
+            omegaTimer.hints = 0;
+            break;
+        case DEVILISH:
+            devilishTimer.time = 0;
+            devilishTimer.hints = 0;
+            break;
+        case TEST:
+            testTimer.time = 0;
+            testTimer.hints = 0;
+            break;
+        default:
+            throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
+    }
+}
+
+var UpdateTimerIfBetter = (difficulty) => {
+    var timer = getTimerForDifficulty(difficulty);
+    var bestTimer = getBestTimerForDifficulty(difficulty);
+
+    if(bestTimer.time < 0 || timer.time < bestTimer.time || 
+        timer.time == bestTimer.time && timer.hints < bestTimer.hints) {
+        bestTimer.time = timer.time;
+        bestTimer.hints = timer.hints;
+    }
+}
+
+var getElapsedTime  = (timer) => {
+    var currentTime = Date.now();
+    var difference = currentTime - currentStartTime + timer.time;
+
+    return difference;
+}
+
+var updateTimerLabel = () => {
+    var timer = getTimerForDifficulty(difficulty);
+
+    var elapsedTime = getElapsedTime(timer);
+
+    var tempTimer = {
+        time: elapsedTime,
+        hints: timer.hints
+    };
+
+    updateTimer(tempTimer);
+}
+
+/**
+ * Converts the number of milliseconds saved in a timer into a human readable format.
+ * The format is analogous to the one used for minigames, except including hours (maybe useful for really difficult puzzles):
+ * hh:mm:ss:fff
+ * @param {*} timer The timer to use
+ * @param {bool} includeHints If true, the string will include the amount of hints used for this timer in brackets
+ * @returns The time converted to a string formatted hh:mm:ss:fff or - when no time was set so far; optionally includes (X hints)
+ */
+var TimerAsString = (timer, includeHints) => {
+    if(timer.time < 0)
+        return "-";
+
+    //log("Creating human readable form of " + timer.time);
+
+    //Get hours from milliseconds
+    var hours = timer.time / (1000 * 60 * 60);
+    var absoluteHours = Math.floor(hours);
+    var h = absoluteHours > 9 ? absoluteHours : '0' + absoluteHours;
+
+    //Get remainder from hours and convert to minutes
+    var minutes = (hours - absoluteHours) * 60;
+    var absoluteMinutes = Math.floor(minutes);
+    var m = absoluteMinutes > 9 ? absoluteMinutes : '0' +  absoluteMinutes;
+
+    //Get remainder from minutes and convert to seconds
+    var seconds = (minutes - absoluteMinutes) * 60;
+    var absoluteSeconds = Math.floor(seconds);
+    var s = absoluteSeconds > 9 ? absoluteSeconds : '0' + absoluteSeconds;
+
+    //Get remainder from seconds and convert to milliseconds
+    var milliseconds = (seconds - absoluteSeconds) * 1000;
+    var absoluteMilliSeconds = Math.floor(milliseconds);
+    var ms = absoluteMilliSeconds > 99 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds > 9 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds;
+
+    var humanReadableString = h + ':' + m + ':' + s + ':' + ms;
+
+    if(includeHints){
+        humanReadableString = humanReadableString + " (" + timer.hints + " hints)";
+    }
+
+    return humanReadableString;
 }
 
 //#endregion
