@@ -1195,6 +1195,9 @@ var createSquare = (i, j, cell) => {
 
     square.onTouched = (e) => {
         if (e.type == TouchType.PRESSED) {
+            if(isFinished(difficulty))
+                return;
+
             if(selectedGivenSquare != null) {
                 selectedGivenSquare.borderColor = getBorderColor();
             }
@@ -1284,6 +1287,8 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
                     resetDifficulty(difficulty);
                     undoButton.isEnabled = false;
+
+                    gameGrid.FadeTo(0.5, 10);
                 } 
                 else {
                     if(fullBoard)
