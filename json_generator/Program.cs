@@ -82,14 +82,15 @@ namespace UpdateJson
 
                 // Write aggregate info
                 aggregateFile.Append("  {\n");
-                aggregateFile.Append("    \"relative_url\": \"" + Escape(descriptor.RelativeUrl) + "\",\n");
+                aggregateFile.Append("    \"relativeUrl\": \"" + Escape(descriptor.RelativeUrl) + "\",\n");
                 aggregateFile.Append("    \"id\": \"" + Escape(descriptor.Id) + "\",\n");
                 aggregateFile.Append("    \"name\": {\n");
                 writeTranslations(aggregateFile, descriptor.GetName, "      ");
                 aggregateFile.Append("\n    },\n");
                 aggregateFile.Append("    \"authors\": \"" + Escape(descriptor.Authors) + "\",\n");
                 aggregateFile.Append("    \"description\": \"" + Escape(descriptor.GetDescription(defaultLanguage)) + "\",\n");
-                aggregateFile.Append("    \"version\": \"" + Escape(descriptor.Version) + "\"\n");
+                aggregateFile.Append("    \"version\": \"" + Escape(descriptor.Version) + "\",\n");
+                aggregateFile.Append("    \"releaseOrder\": \"" + Escape(descriptor.ReleaseOrder) + "\"\n");
                 aggregateFile.Append("  }");
 
                 if (descriptor != descriptors.Last())
