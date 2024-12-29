@@ -1203,13 +1203,13 @@ var getFontSize = (type) => {
                 case TINY:
                     return 12;
                 case SMALL:
-                    return 14;
+                    return 12;
                 case NORMAL:
-                    return 16;
+                    return 14;
                 case BIG:
-                    return 18;
+                    return 16;
                 case LARGE:
-                    return 20;
+                    return 16;
                 default:
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
