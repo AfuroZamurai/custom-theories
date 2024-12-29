@@ -728,15 +728,133 @@ let testPuzzles = ['127539468568214793439678251016953824354182976892467315643725
 '195746832623859174748132956251368749967425381384971265876214593519083427432597618']
 //#endregion
 
+/**
+ * Calculates the aspect ratio of the smartphone view port.
+ */
+var getAspectRatio = () => {
+    return ui.screenWidth / ui.screenHeight;
+}
+
+/**
+ * Calculates the device screen size.
+ * Depending on the aspect ratio and width/height and density, 
+ * this will classify the device to a type, which can be used to determine the size of UI elements.
+ */
+var getDeviceSizeType = () => {
+    var aspectRatio = getAspectRatio();
+
+    if (ui.screenWidth < 450){
+        return TINY;
+    }
+
+    if (ui.screenWidth < 540){
+        return SMALL;
+    }
+
+    if (ui.screenWidth < 720){
+        return NORMAL;
+    }
+
+    if (ui.screenWidth < 1080){
+        return BIG;
+    }
+
+    return LARGE;
+}
+
+/**
+ * Calculates how high the primary equation should be for text to be readable depending on the screen size.
+ */
+function getPrimaryEquationHeight() {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
+        case TINY:
+            return 50;
+        case SMALL:
+            return 60;
+        case NORMAL:
+            return 70;
+        case BIG:
+            return 80;
+        case LARGE:
+            return 90;
+        default:
+            throw new Error("Cannot calculate primary equation height for unknown device size type " + deviceSize + "!");
+    }
+}
+
+/**
+ * Calculates how the primary equation should be scaled for text to be readable depending on the screen size.
+ */
+function getPrimaryEquationScale() {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
+        case TINY:
+            return 0.9;
+        case SMALL:
+            return 0.9;
+        case NORMAL:
+            return 1;
+        case BIG:
+            return 1.1;
+        case LARGE:
+            return 1.3;
+        default:
+            throw new Error("Cannot calculate primary equation scale for unknown device size type " + deviceSize + "!");
+    }
+}
+
+/**
+ * Calculates how high the sedcondary equation should be for text to be readable depending on the screen size.
+ */
+function getSecondaryEquationHeight() {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
+        case TINY:
+            return 60;
+        case SMALL:
+            return 70;
+        case NORMAL:
+            return 80;
+        case BIG:
+            return 90;
+        case LARGE:
+            return 100;
+        default:
+            throw new Error("Cannot calculate secondary equation height for unknown device size type " + deviceSize + "!");
+    }
+}
+
+/**
+ * Calculates how the secondary equation should be scaled for text to be readable depending on the screen size.
+ */
+var getSecondaryEquationScale = () => {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
+        case TINY:
+            return 1.1;
+        case SMALL:
+            return 1.1;
+        case NORMAL:
+            return 1.1;
+        case BIG:
+            return 1.2;
+        case LARGE:
+            return 1.3;
+        default:
+            throw new Error("Cannot calculate secondary equation scale for unknown device size type " + deviceSize + "!");
+    }
+}
+
 var init = () => {
     ///////////////////
     // Setup
     currency = theory.createCurrency("⋆", "\star");
 
-    theory.primaryEquationHeight = 50;
-    theory.primaryEquationScale = 0.9;
-    theory.secondaryEquationHeight = 60;
-    theory.secondaryEquationScale = 1.1;
+    theory.primaryEquationHeight = getPrimaryEquationHeight();
+    theory.primaryEquationScale = getPrimaryEquationScale();
+    theory.secondaryEquationHeight = getSecondaryEquationHeight();
+    theory.secondaryEquationScale = getSecondaryEquationScale();
 
     ///////////////////
     // Sudoku variables
@@ -1153,40 +1271,6 @@ var UpdateBoardAndSquare = (cell, cellIndex) => {
 
 var GetSquare = (index) => {
     return gameGrid.children[index];
-}
-
-/**
- * Calculates the device screen size.
- * Depending on the aspect ratio and width/height and density, 
- * this will classify the device to a type, which can be used to determine the size of UI elements.
- */
-var getDeviceSizeType = () => {
-    var aspectRatio = getAspectRatio();
-
-    if (ui.screenWidth < 450){
-        return TINY;
-    }
-
-    if (ui.screenWidth < 540){
-        return SMALL;
-    }
-
-    if (ui.screenWidth < 720){
-        return NORMAL;
-    }
-
-    if (ui.screenWidth < 1080){
-        return BIG;
-    }
-
-    return LARGE;
-}
-
-/**
- * Calculates the aspect ratio of the smartphone view port.
- */
-var getAspectRatio = () => {
-    return ui.screenWidth / ui.screenHeight;
 }
 
 /**
