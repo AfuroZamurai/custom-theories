@@ -398,3 +398,8 @@ ideas/*
 
 # unpublished
 unpublished/*
+
+# package(-lock).json
+# Only used for Typescript tests, which are neither public nor used
+package.json
+package-lock.json
