@@ -1279,14 +1279,56 @@ var getFontSize = (type) => {
 }
 
 var getNumberButtonSize = () => {
-    return 25;
+    var deviceSize = getDeviceSizeType();
+
+    switch (deviceSize){
+        case TINY:
+            return 25;
+        case SMALL:
+            return 30;
+        case NORMAL:
+            return 35;
+        case BIG:
+            return 40;
+        case LARGE:
+            return 45;
+        default:
+            throw new Error("Cannot calculate number button size for unknown device size type " + deviceSize + "!");
+    }
 }
 
 var getActionButtonSize = () => {
-    return {
-        "Width": 75,
-        "Height": 30
-    };
+    var deviceSize = getDeviceSizeType();
+
+    switch (deviceSize){
+        case TINY:
+            return {
+                "Width": 75,
+                "Height": 30
+            };
+        case SMALL:
+            return {
+                "Width": 80,
+                "Height": 35
+            };
+        case NORMAL:
+            return {
+                "Width": 85,
+                "Height": 40
+            };
+        case BIG:
+            return {
+                "Width": 90,
+                "Height": 45
+            };
+        case LARGE:
+            return {
+                "Width": 95,
+                "Height": 50
+            };
+        default:
+            throw new Error("Cannot calculate action button size for unknown device size type " + deviceSize + "!");
+    }
 }
 
 var createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
