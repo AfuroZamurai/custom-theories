@@ -13,14 +13,16 @@ import {Color} from "./api/ui/properties/Color";
 import {CornerRadius} from "./api/ui/properties/CornerRadius";
 import {game} from "./api/Game";
 
-requiresGameVersion("1.4.28");
+requiresGameVersion("1.4.33");
 
 var id = "eulers_formula";
 var name = "Euler's Formula";
 var description = "You're a student hired by a professor at a famous university. Since your work has received a bit of attention from your colleagues in the past, you decide to go into a subject not yet covered by your professor, which has interested you since day 1 of deciding to study mathematics - Complex Numbers.\nYou hope that with your research on this subject, you can finally get the breakthrough you always wanted in the scientific world.\n\nThis theory explores the world of complex numbers, their arrangement and their place in the Universe of Mathematics. The theory, named after famous mathematician Leonhard Euler, explores the relationship between exponential and trigonometric functions.\nYour task is to use this formula, and with the help of the Pythagorean theorem, to calculate the distances of cos(t) and isin(t) from the origin and grow them as large as possible using many different methods and approaches!\nA theory with interesting grow and decay rates, unusual properties, and (We hope) an interesting story!\n\nVariable Explanation:\n\nt - A simple variable based on time. Is reset on publish.\nq - A variable helping you grow ρ, directly affected by t.\na - Multiple kinds of variables, helping you grow ρ.\nb and c - Variables modifying cos(t) and isin(t)\n\nHuge thanks to:\n\n- Gilles-Philippe, for implementing integral features we proposed, helping us a *ton* during development, answering our questions and giving us beta features to use in our theories!\n\n- XLII, doing basically ALL of the balancing together with Snaeky, deciding various integral features of the theory such as, but not limited to: milestone placement, milestone costs, publication multipliers and a lot more!\n\n- Snaeky, without whom this theory would not have been possible as he was the one with the original idea of structuring a theory around Euler's Formula, and always answered my (peanut's) questions and motivated us all to push this theory forward.\n\nand of course:\n\n- The entire Discord community, who've playtested this theory and reported many bugs, especially those active in #custom-theories-dev!\n\nWe hope you enjoy playing this theory as much as we had developing it and coming up with ideas for it!\n\n- The Eulers-Formula-CT Team"
 var authors = "Snaeky (SnaekySnacks#1161) - Structuring\nXLII (XLII#0042) - Balancing\npeanut (peanut#6368) - Developer";
-var version = 3;
+var version = 6;
 var releaseOrder = "3";
+
+var tauMultiplier = 4;
 
 // internal variables
 var currency, currency_R, currency_I;
@@ -193,7 +195,7 @@ var init = () => {
     theory.createAutoBuyerUpgrade(2, currency, 1e20);
 
     // Milestone Upgrades
-    theory.setMilestoneCost(new CustomCost(total => BigNumber.from(getCustomCost(total))));
+    theory.setMilestoneCost(new CustomCost(total => BigNumber.from(getCustomCost(total)*tauMultiplier)));
 
     {
         dimension = theory.createMilestoneUpgrade(0, 2);
@@ -240,24 +242,24 @@ var init = () => {
     let achievement_category_3 = theory.createAchievementCategory(2, "Publications");
     let achievement_category_4 = theory.createAchievementCategory(3, "Secret Achievements");
 
-    let e10 = BigNumber.from(1e10);
-    let e20 = BigNumber.from(1e20);
-    let e25 = BigNumber.from(1e25);
-    let e50 = BigNumber.from(1e50);
+    let e10 = BigNumber.from(1e10).pow(tauMultiplier);
+    let e20 = BigNumber.from(1e20).pow(tauMultiplier);
+    let e25 = BigNumber.from(1e25).pow(tauMultiplier);
+    let e50 = BigNumber.from(1e50).pow(tauMultiplier);
     let e69 = BigNumber.from(1e69);
-    let e75 = BigNumber.from(1e75);
-    let e100 = BigNumber.from(1e100);
-    let e125 = BigNumber.from(1e125);
-    let e150 = BigNumber.from(1e150);
-    theory.createAchievement(0, achievement_category_1, "Getting Started", "Reach 1e10τ.", () => theory.tau > e10);
-    theory.createAchievement(1, achievement_category_1, "Beginner's Luck", "Reach 1e20τ.", () => theory.tau > e20);
-    theory.createAchievement(2, achievement_category_1, "Imaginary Limits", "Reach 1e25τ.", () => theory.tau > e25);
-    theory.createAchievement(3, achievement_category_1, "Complex Progress", "Reach 1e50τ.", () => theory.tau > e50);
+    let e75 = BigNumber.from(1e75).pow(tauMultiplier);
+    let e100 = BigNumber.from(1e100).pow(tauMultiplier);
+    let e125 = BigNumber.from(1e125).pow(tauMultiplier);
+    let e150 = BigNumber.from(1e150).pow(tauMultiplier);
+    theory.createAchievement(0, achievement_category_1, "Getting Started", "Reach 1e40τ.", () => theory.tau > e10);
+    theory.createAchievement(1, achievement_category_1, "Beginner's Luck", "Reach 1e80τ.", () => theory.tau > e20);
+    theory.createAchievement(2, achievement_category_1, "Imaginary Limits", "Reach 1e100τ.", () => theory.tau > e25);
+    theory.createAchievement(3, achievement_category_1, "Complex Progress", "Reach 1e200τ.", () => theory.tau > e50);
     theory.createAchievement(4, achievement_category_1, "Nice", "Reach 1e69τ.", () => theory.tau > e69);
-    theory.createAchievement(5, achievement_category_1, "Euler's Student", "Reach 1e75τ.", () => theory.tau > e75);
-    theory.createAchievement(6, achievement_category_1, "There's more?", "Reach 1e100τ.", () => theory.tau > e100);
-    theory.createAchievement(7, achievement_category_1, "Are we done yet?", "Reach 1e125τ.", () => theory.tau > e125);
-    theory.createAchievement(8, achievement_category_1, "A New Professor", "Reach 1e150τ.", () => theory.tau > e150);
+    theory.createAchievement(5, achievement_category_1, "Euler's Student", "Reach 1e300τ.", () => theory.tau > e75);
+    theory.createAchievement(6, achievement_category_1, "There's more?", "Reach 1e400τ.", () => theory.tau > e100);
+    theory.createAchievement(7, achievement_category_1, "Are we done yet?", "Reach 1e500τ.", () => theory.tau > e125);
+    theory.createAchievement(8, achievement_category_1, "A New Professor", "Reach 1e600τ.", () => theory.tau > e150);
 
     theory.createAchievement(9, achievement_category_2, "Automatic Analysis", "Let your machine learning algorithm calculate the theory for you.", () => theory.isAutoBuyerAvailable);
     theory.createAchievement(10, achievement_category_2, "Realistic Methods", "Figure out how to use R (real dimension).", () => dimension.level > 0);
@@ -401,7 +403,7 @@ var init = () => {
     story_chapter_11 += "Are you willing to continue in my position?\"\n";
     story_chapter_11 += "You excitingly accept his offer and cannot wait to pursue a career as a professor.\n\n\n"
     story_chapter_11 += "The End."
-    theory.createStoryChapter(9, "The True Ending", story_chapter_11, () => predicateAndCallbackPopup()); // unlocked at tau = e150 (finished)
+    theory.createStoryChapter(9, "The True Ending", story_chapter_11, () => predicateAndCallbackPopup()); // unlocked at tau = e600 (finished)
 
     updateAvailability();
 }
@@ -410,9 +412,9 @@ var init = () => {
 // -------------------------------------------------------------------------------
 
 // written by gilles
-let e150 = BigNumber.from(1e150);
+let e600 = BigNumber.from("1e600");
 var predicateAndCallbackPopup = () => {
-    if (theory.tau >= e150) {
+    if (theory.tau >= e600) {
         getEndPopup.show();
         return true;
     }
@@ -737,7 +739,7 @@ var getSecondaryEquation = () => {
 var getTertiaryEquation = () => {
     let s_value = BigNumber.from(14102005);
     let s_condition = s1Proof() && currency.value > s_value && s_boolean_1;
-    let result = s_condition ? "\\text{-- do the flashbang dance! --}" : theory.latexSymbol + "=\\max\\rho^{0.4}";
+    let result = s_condition ? "\\text{-- do the flashbang dance! --}" : theory.latexSymbol + "=\\max\\rho^{1.6}";
     return result;
 }
 
@@ -761,11 +763,11 @@ var getQuaternaryEntries = () => {
 
 var get3DGraphPoint = () => swizzle((state - center) * scale);
 var get3DGraphTranslation = () => swizzle((new Vector3(-t_graph.toNumber() + 6, 0, 0) - center) * scale);
-var getPublicationMultiplier = (tau) => tau.pow(0.387);
-var getPublicationMultiplierFormula = (symbol) => symbol + "^{0.387}";
+var getPublicationMultiplier = (tau) => tau.pow(0.387/tauMultiplier);
+var getPublicationMultiplierFormula = (symbol) => symbol + "^{0.09675}";
 var isCurrencyVisible = (index) => index == 0 || (index == 1 && dimension.level > 0) || (index == 2 && dimension.level > 1);
-var getTau = () => currency.value.pow(BigNumber.from(0.4));
-var getCurrencyFromTau = (tau) => [tau.max(BigNumber.ONE).pow(2.5), currency.symbol];
+var getTau = () => currency.value.pow(BigNumber.from(0.4*tauMultiplier));
+var getCurrencyFromTau = (tau) => [tau.max(BigNumber.ONE).pow(2.5/tauMultiplier), currency.symbol];
 
 var getQ1 = (level) => Utils.getStepwisePowerSum(level, 2, 10, 0);
 var getQ2 = (level) => BigNumber.TWO.pow(level);
