@@ -728,6 +728,41 @@ let testPuzzles = ['127539468568214793439678251016953824354182976892467315643725
 '195746832623859174748132956251368749967425381384971265876214593519083427432597618']
 //#endregion
 
+//#region Localization
+
+const locStrings =
+{
+    en:
+    {
+        primaryEquation: 'Select\\ a\\ difficulty\\ to\\ play\\ a\\ random\\ Sudoku'
+    },
+    de:
+    {
+       primaryEquation: 'Wähle\\ eine\\ Schwierigkeit,\\ um\\\\ ein\\ zufälliges\\ Sudoku\\ zu\\ spielen'
+    }
+}
+
+const PLAYER_LANGUAGE = Localization.language;
+
+/**
+ * Returns a localized string.
+ * @param {string} name The internal name of the string.
+ * @param {string} lang Optionally the language code. Uses the language selected by the player in the game by default.
+ * @returns {string} The localized string in the requested language or in English if not found.
+ */
+let getLoc = (name, lang = PLAYER_LANGUAGE) =>
+{
+    if(lang in locStrings && name in locStrings[lang])
+        return locStrings[lang][name];
+
+    if(name in locStrings.en)
+        return locStrings.en[name];
+
+    return `String missing: ${lang}.${name}`;
+}
+
+//#endregion
+
 /**
  * Calculates the aspect ratio of the smartphone view port.
  */
@@ -747,15 +782,15 @@ var getDeviceSizeType = () => {
         return TINY;
     }
 
-    if (ui.screenWidth < 540){
+    if (ui.screenWidth <= 540){
         return SMALL;
     }
 
-    if (ui.screenWidth < 720){
+    if (ui.screenWidth <= 720){
         return NORMAL;
     }
 
-    if (ui.screenWidth < 1080){
+    if (ui.screenWidth <= 1080){
         return BIG;
     }
 
@@ -773,7 +808,7 @@ function getPrimaryEquationHeight() {
         case SMALL:
             return 60;
         case NORMAL:
-            return 70;
+            return 60;
         case BIG:
             return 80;
         case LARGE:
@@ -794,9 +829,9 @@ function getPrimaryEquationScale() {
         case SMALL:
             return 0.9;
         case NORMAL:
-            return 1;
+            return 0.9;
         case BIG:
-            return 1.1;
+            return 1;
         case LARGE:
             return 1.3;
         default:
@@ -815,7 +850,7 @@ function getSecondaryEquationHeight() {
         case SMALL:
             return 70;
         case NORMAL:
-            return 80;
+            return 70;
         case BIG:
             return 90;
         case LARGE:
@@ -836,7 +871,7 @@ var getSecondaryEquationScale = () => {
         case SMALL:
             return 1.1;
         case NORMAL:
-            return 1.1;
+            return 1;
         case BIG:
             return 1.2;
         case LARGE:
@@ -1060,7 +1095,7 @@ var setInternalState = (state) => {
 }
 
 var getPrimaryEquation = () => {
-    return "\\text{Select\\ a\\ difficulty\\ to\\ play\\ a\\ random\\ Sudoku}";
+    return "\\text{"+ getLoc('primaryEquation') + "}";
 }
 
 var getSecondaryEquation = () => {
