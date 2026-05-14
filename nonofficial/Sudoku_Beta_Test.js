@@ -11,14 +11,15 @@ import {Thickness} from "./api/ui/properties/Thickness";
 import {Color} from "./api/ui/properties/Color";
 import {Theme} from "./api/Settings";
 import {LayoutOptions} from "./api/ui/properties/LayoutOptions";
+import {log} from "./api/Utils";
 //#endregion
 
 //#region Globals
-const id = "sudoku_theory_beta";
-const name = "Sudoku Beta";
-const description = "A minigame theory which allows you to play different difficulties of sudoku. This is the beta version. This doesn't necessarily mean that it includes more features than the alpha version but that it is intended as the version which might make it into the game.";
-const authors = "AfuroZamurai";
-const version = 1;
+var id = "sudoku_theory_beta_test";
+var name = "Sudoku Beta Test";
+var description = "A minigame theory which allows you to play different difficulties of sudoku. This is the beta version. This doesn't necessarily mean that it includes more features than the alpha version but that it is intended as the version which might make it into the game.";
+var authors = "AfuroZamurai";
+var version = 1;
 
 let currency;
 
@@ -730,7 +731,7 @@ let testPuzzles = ['127539468568214793439678251016953824354182976892467315643725
 
 //#region Localization
 
-const locStrings =
+var locStrings =
     {
         en:
             {
@@ -750,7 +751,7 @@ const PLAYER_LANGUAGE = Localization.language;
  * @param {string} lang Optionally the language code. Uses the language selected by the player in the game by default.
  * @returns {string} The localized string in the requested language or in English if not found.
  */
-let getLoc = (name, lang = PLAYER_LANGUAGE) => {
+var getLoc = (name, lang = PLAYER_LANGUAGE) => {
     if (lang in locStrings && name in locStrings[lang])
         return locStrings[lang][name];
 
@@ -765,7 +766,7 @@ let getLoc = (name, lang = PLAYER_LANGUAGE) => {
 /**
  * Calculates the aspect ratio of the smartphone view port.
  */
-const getAspectRatio = () => {
+var getAspectRatio = () => {
     return ui.screenWidth / ui.screenHeight;
 };
 
@@ -880,7 +881,7 @@ const getSecondaryEquationScale = () => {
     }
 };
 
-const init = () => {
+var init = () => {
     ///////////////////
     // Setup
     currency = theory.createCurrency("⋆", "\star");
@@ -1013,7 +1014,7 @@ const init = () => {
 };
 
 //#region Theory Code
-const tick = (elapsedTime, multiplier) => {
+var tick = (elapsedTime, multiplier) => {
     if (gameGrid && gameGrid.width > 0 && gameGrid.heightRequest < 0)
         gameGrid.heightRequest = Math.max(gameGrid.width, 0);
 
@@ -1025,7 +1026,7 @@ const tick = (elapsedTime, multiplier) => {
 };
 
 
-const getInternalState = () => {
+var getInternalState = () => {
     // save all difficulty board states and undo/redo stacks
     log("Saving...");
 
@@ -1044,7 +1045,7 @@ const getInternalState = () => {
     return saveState;
 };
 
-const setInternalState = (state) => {
+var setInternalState = (state) => {
     // restore all difficulty board states and undo/redo stacks
     log("Restoring...");
 
@@ -1093,15 +1094,15 @@ const setInternalState = (state) => {
     testBestTimer = saveState[34];
 };
 
-const getPrimaryEquation = () => {
+var getPrimaryEquation = () => {
     return "\\text{" + getLoc('primaryEquation') + "}";
 };
 
-const getSecondaryEquation = () => {
+var getSecondaryEquation = () => {
     return "\\text{The goal of a Sudoku is to place numbers such that \\\\ each number between 1 and 9 appears exactly once \\\\ in each row, column or 3x3 box.}";
 };
 
-const getTau = () => currency.value;
+var getTau = () => currency.value;
 
 const rewardForDifficulty = (difficulty) => {
     let reward = 0;
@@ -1817,7 +1818,7 @@ var textForMode = (mode) => {
 var showSudokuPopup = (difficulty) => {
     selectedSquare = null;
     mode = NORMAL_MODE;
-    board = getBoard(difficulty)
+    let board = getBoard(difficulty)
 
     const popup = createPopupUI(difficulty, board);
 
@@ -1877,7 +1878,7 @@ var getBoard = (difficulty) => {
 }
 
 var clearAndSetBoard = (difficulty) => {
-    board = null;
+    let board = null;
     selectedSquare = null;
     mode = NORMAL_MODE;
 
@@ -2296,6 +2297,15 @@ var redo = (difficulty) => {
     restoreState(difficulty, REDO_MODE);
 }
 
+
+//#region DEBUG
+const logObject = (object, prefix = "") => {
+    let output = '';
+    for (let property in object) {
+        output += property + ': ' + object[property] + '; ';
+    }
+    log(prefix + "object: " + output);
+};
 var restoreState = (difficulty, operationMode) => {
     if (operationMode !== UNDO_MODE && operationMode !== REDO_MODE)
         throw new Error("Unrecognized operation mode " + operationMode + "; cannot proceed");
@@ -2952,20 +2962,11 @@ var generate = (board) => {
 
 //#endregion
 
-//#region DEBUG
-var logObject = (object, prefix = "") => {
-    let output = '';
-    for (let property in object) {
-        output += property + ': ' + object[property] + '; ';
-    }
-    log(prefix + "object: " + output);
-}
-
-const logBoard = (board) => {
+var logBoard = (board) => {
     for (let r = 0; r < ROWS; r++) {
         log("-------------------------------------");
 
-        currentRowCells = []
+        const currentRowCells = []
         for (let c = 0; c < COLS; c++) {
             const cell = board[r * 9 + c];
             currentRowCells.push(cell.number < 1 ? ' ' : cell.number);
