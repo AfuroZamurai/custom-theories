@@ -3,31 +3,30 @@ This code includes region comments to collapse code sections in VS Code via the 
 */
 
 //#region Imports
-import {FreeCost} from "./api/Costs";
-import {Localization} from "./api/Localization";
-import {theory} from "./api/Theory";
-import {TextAlignment} from "./api/ui/properties/TextAlignment";
-import {Thickness} from "./api/ui/properties/Thickness";
-import {Color} from "./api/ui/properties/Color";
-import {Theme} from "./api/Settings";
-import {LayoutOptions} from "./api/ui/properties/LayoutOptions";
-import {log} from "./api/Utils";
+import { FreeCost } from "./api/Costs";
+import { Localization } from "./api/Localization";
+import { theory } from "./api/Theory";
+import { TextAlignment } from "./api/ui/properties/TextAlignment";
+import { Thickness } from "./api/ui/properties/Thickness";
+import { Color } from "./api/ui/properties/Color";
+import { Theme } from ".api/Settings";
+import { LayoutOptions } from "./api/ui/properties/LayoutOptions";
 //#endregion
 
 //#region Globals
-var id = "sudoku_theory_beta_test";
+var id = "sudoku_theory_beta";
 var name = "Sudoku Beta Test";
 var description = "A minigame theory which allows you to play different difficulties of sudoku. This is the beta version. This doesn't necessarily mean that it includes more features than the alpha version but that it is intended as the version which might make it into the game.";
 var authors = "AfuroZamurai";
 var version = 1;
 
-let currency;
+var currency;
 
-let easy, medium, hard, expert, omega, devilish;
-let difficulty;
+var easy, medium, hard, expert, omega, devilish;
+var difficulty;
 
 /**
- * A board is containing 81 cells, with each cell being the following data structure (TODO: change to a faster representation)
+ * A board is containing 81 cells, with each cell being the following datastructure (TODO: change to a faster representation)
  *
  * cell = {
  number: number,
@@ -36,24 +35,24 @@ let difficulty;
  centerMarks: []
  }
  */
-let easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
+var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
 
-let easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
-let easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
+var easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
+var easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
 
-let easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer;
-let easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer;
-let currentStartTime;
+var easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer;
+var easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer;
+var currentStartTime;
 
 // intentionally almost completed board for testing purposes
-let test;
-let testBoard;
+var test;
+var testBoard;
 
-let testUndoStack;
-let testRedoStack;
+var testUndoStack;
+var testRedoStack;
 
-let testTimer;
-let testBestTimer;
+var testTimer;
+var testBestTimer;
 
 const TEST = "Test";
 const EASY = "Easy";
@@ -95,13 +94,13 @@ const NORMAL = 2;
 const BIG = 3;
 const LARGE = 4;
 
-const isPopupOpen = false;
+var isPopupOpen = false;
 
-let gameGrid = null;
-let undoButton;
-let redoButton;
-let timerLabel;
-let bestTimeLabel;
+var gameGrid = null;
+var undoButton;
+var redoButton;
+var timerLabel;
+var bestTimeLabel;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -731,7 +730,7 @@ let testPuzzles = ['127539468568214793439678251016953824354182976892467315643725
 
 //#region Localization
 
-var locStrings =
+const locStrings =
     {
         en:
             {
@@ -751,11 +750,12 @@ const PLAYER_LANGUAGE = Localization.language;
  * @param {string} lang Optionally the language code. Uses the language selected by the player in the game by default.
  * @returns {string} The localized string in the requested language or in English if not found.
  */
-var getLoc = (name, lang = PLAYER_LANGUAGE) => {
-    if (lang in locStrings && name in locStrings[lang])
+let getLoc = (name, lang = PLAYER_LANGUAGE) =>
+{
+    if(lang in locStrings && name in locStrings[lang])
         return locStrings[lang][name];
 
-    if (name in locStrings.en)
+    if(name in locStrings.en)
         return locStrings.en[name];
 
     return `String missing: ${lang}.${name}`;
@@ -768,41 +768,41 @@ var getLoc = (name, lang = PLAYER_LANGUAGE) => {
  */
 var getAspectRatio = () => {
     return ui.screenWidth / ui.screenHeight;
-};
+}
 
 /**
  * Calculates the device screen size.
  * Depending on the aspect ratio and width/height and density,
  * this will classify the device to a type, which can be used to determine the size of UI elements.
  */
-const getDeviceSizeType = () => {
-    const aspectRatio = getAspectRatio();
+var getDeviceSizeType = () => {
+    var aspectRatio = getAspectRatio();
 
-    if (ui.screenWidth < 450) {
+    if (ui.screenWidth < 450){
         return TINY;
     }
 
-    if (ui.screenWidth <= 540) {
+    if (ui.screenWidth <= 540){
         return SMALL;
     }
 
-    if (ui.screenWidth <= 720) {
+    if (ui.screenWidth <= 720){
         return NORMAL;
     }
 
-    if (ui.screenWidth <= 1080) {
+    if (ui.screenWidth <= 1080){
         return BIG;
     }
 
     return LARGE;
-};
+}
 
 /**
  * Calculates how high the primary equation should be for text to be readable depending on the screen size.
  */
 function getPrimaryEquationHeight() {
-    const deviceSize = getDeviceSizeType();
-    switch (deviceSize) {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
         case TINY:
             return 50;
         case SMALL:
@@ -822,8 +822,8 @@ function getPrimaryEquationHeight() {
  * Calculates how the primary equation should be scaled for text to be readable depending on the screen size.
  */
 function getPrimaryEquationScale() {
-    const deviceSize = getDeviceSizeType();
-    switch (deviceSize) {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
         case TINY:
             return 0.9;
         case SMALL:
@@ -843,8 +843,8 @@ function getPrimaryEquationScale() {
  * Calculates how high the sedcondary equation should be for text to be readable depending on the screen size.
  */
 function getSecondaryEquationHeight() {
-    const deviceSize = getDeviceSizeType();
-    switch (deviceSize) {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
         case TINY:
             return 60;
         case SMALL:
@@ -863,9 +863,9 @@ function getSecondaryEquationHeight() {
 /**
  * Calculates how the secondary equation should be scaled for text to be readable depending on the screen size.
  */
-const getSecondaryEquationScale = () => {
-    const deviceSize = getDeviceSizeType();
-    switch (deviceSize) {
+var getSecondaryEquationScale = () => {
+    var deviceSize = getDeviceSizeType();
+    switch (deviceSize){
         case TINY:
             return 1.1;
         case SMALL:
@@ -879,7 +879,7 @@ const getSecondaryEquationScale = () => {
         default:
             throw new Error("Cannot calculate secondary equation scale for unknown device size type " + deviceSize + "!");
     }
-};
+}
 
 var init = () => {
     ///////////////////
@@ -899,7 +899,7 @@ var init = () => {
         let getDesc = () => "Easy difficulty (gain " + REWARD_EASY + " ⋆)";
         let getInfo = () => "Open a sudoku with an easy difficulty";
         easy = theory.createUpgrade(0, currency, new FreeCost());
-        easy.getDescription = (_) => getDesc();
+        easy.getDescription = (_) =>getDesc();
         easy.getInfo = (amount) => getInfo();
         easy.bought = (amount) => {
             easy.level -= amount;
@@ -916,7 +916,7 @@ var init = () => {
         let getDesc = () => "Medium difficulty (gain " + REWARD_MEDIUM + " ⋆)";
         let getInfo = () => "Open a sudoku with a medium difficulty";
         medium = theory.createUpgrade(1, currency, new FreeCost());
-        medium.getDescription = (_) => getDesc();
+        medium.getDescription = (_) =>getDesc();
         medium.getInfo = (amount) => getInfo();
         medium.bought = (amount) => {
             medium.level -= amount;
@@ -932,7 +932,7 @@ var init = () => {
         let getDesc = () => "Hard difficulty (gain " + REWARD_HARD + " ⋆)";
         let getInfo = () => "Open a sudoku with a hard difficulty";
         hard = theory.createUpgrade(2, currency, new FreeCost());
-        hard.getDescription = (_) => getDesc();
+        hard.getDescription = (_) =>getDesc();
         hard.getInfo = (amount) => getInfo();
         hard.bought = (amount) => {
             hard.level -= amount;
@@ -948,7 +948,7 @@ var init = () => {
         let getDesc = () => "Expert difficulty (gain " + REWARD_EXPERT + " ⋆)";
         let getInfo = () => "Open a sudoku with an expert difficulty";
         expert = theory.createUpgrade(3, currency, new FreeCost());
-        expert.getDescription = (_) => getDesc();
+        expert.getDescription = (_) =>getDesc();
         expert.getInfo = (amount) => getInfo();
         expert.bought = (amount) => {
             expert.level -= amount;
@@ -964,7 +964,7 @@ var init = () => {
         let getDesc = () => "Omega difficulty (gain " + REWARD_OMEGA + " ⋆)";
         let getInfo = () => "Open a sudoku with an omega difficulty";
         omega = theory.createUpgrade(4, currency, new FreeCost());
-        omega.getDescription = (_) => getDesc();
+        omega.getDescription = (_) =>getDesc();
         omega.getInfo = (amount) => getInfo();
         omega.bought = (amount) => {
             omega.level -= amount;
@@ -980,7 +980,7 @@ var init = () => {
         let getDesc = () => "Devilish difficulty (gain " + REWARD_DEVILISH + " ⋆)";
         let getInfo = () => "Open a sudoku with a devilish difficulty";
         devilish = theory.createUpgrade(5, currency, new FreeCost());
-        devilish.getDescription = (_) => getDesc();
+        devilish.getDescription = (_) =>getDesc();
         devilish.getInfo = (amount) => getInfo();
         devilish.bought = (amount) => {
             devilish.level -= amount;
@@ -996,7 +996,7 @@ var init = () => {
         let getDesc = () => "Test difficulty (gain " + REWARD_TEST + " ⋆)";
         let getInfo = () => "Almost solved Sudokus for testing purposes";
         test = theory.createUpgrade(6, currency, new FreeCost());
-        test.getDescription = (_) => getDesc();
+        test.getDescription = (_) =>getDesc();
         test.getInfo = (amount) => getInfo();
         test.bought = (amount) => {
             test.level -= amount;
@@ -1011,7 +1011,7 @@ var init = () => {
     // Achievements
 
     // Check with Gilles to see if anything is making sense here
-};
+}
 
 //#region Theory Code
 var tick = (elapsedTime, multiplier) => {
@@ -1020,10 +1020,10 @@ var tick = (elapsedTime, multiplier) => {
 
     //log("elapsedTime: " + elapsedTime + ", multiplier: " + multiplier + " , elapsedTime * multiplier = " + elapsedTime * multiplier);
 
-    if (currentStartTime != null) {
+    if(currentStartTime != null) {
         updateTimerLabel();
     }
-};
+}
 
 
 var getInternalState = () => {
@@ -1033,23 +1033,23 @@ var getInternalState = () => {
     // Save currently running timer in case of shutdown and reset current start time
     updateTimerInSave();
 
-    const saveArray = [easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard,
+    var saveArray = [easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard, testBoard,
         easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack, testUndoStack,
         easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack,
         easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer, testTimer,
         easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer, testBestTimer];
-    const saveState = JSON.stringify(saveArray);
+    var saveState = JSON.stringify(saveArray);
 
     //log(saveState);
 
     return saveState;
-};
+}
 
 var setInternalState = (state) => {
     // restore all difficulty board states and undo/redo stacks
     log("Restoring...");
 
-    const saveState = JSON.parse(state);
+    var saveState = JSON.parse(state);
 
     //log(saveState);
 
@@ -1092,21 +1092,21 @@ var setInternalState = (state) => {
     omegaBestTimer = saveState[32];
     devilishBestTimer = saveState[33];
     testBestTimer = saveState[34];
-};
+}
 
 var getPrimaryEquation = () => {
-    return "\\text{" + getLoc('primaryEquation') + "}";
-};
+    return "\\text{"+ getLoc('primaryEquation') + "}";
+}
 
 var getSecondaryEquation = () => {
     return "\\text{The goal of a Sudoku is to place numbers such that \\\\ each number between 1 and 9 appears exactly once \\\\ in each row, column or 3x3 box.}";
-};
+}
 
 var getTau = () => currency.value;
 
-const rewardForDifficulty = (difficulty) => {
-    let reward = 0;
-    switch (difficulty) {
+var rewardForDifficulty = (difficulty) => {
+    var reward = 0;
+    switch(difficulty) {
         case EASY:
             reward = REWARD_EASY;
             break;
@@ -1133,16 +1133,16 @@ const rewardForDifficulty = (difficulty) => {
     }
 
     return reward;
-};
+}
 
 var increaseCurrency = (reward) => {
     currency.value += reward;
 }
 
-const resetDifficulty = (difficulty) => {
+var resetDifficulty = (difficulty) => {
     resetUndoRedoStacks(difficulty);
     resetTimer(difficulty);
-    switch (difficulty) {
+    switch(difficulty) {
         case EASY:
             easyBoard = null;
             break;
@@ -1167,10 +1167,10 @@ const resetDifficulty = (difficulty) => {
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
-};
+}
 
-const isFinished = (difficulty) => {
-    switch (difficulty) {
+var isFinished = (difficulty) => {
+    switch(difficulty) {
         case EASY:
             return easyBoard == null;
         case MEDIUM:
@@ -1188,28 +1188,28 @@ const isFinished = (difficulty) => {
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
-};
+}
 
 init();
 //#endregion
 
 //#region UI Utility
-const getBackgroundColor = (preset) => {
-    switch (game.settings.theme) {
+var getBackgroundColor = (preset) => {
+    switch(game.settings.theme) {
         case Theme.STANDARD:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.2, 0.2, 0.2);
             return Color.fromRgb(0.4, 0.4, 0.4);
         case Theme.DARK:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.3, 0.3, 0.3);
             return Color.fromRgb(0, 0, 0);
         case Theme.LIGHT:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.7, 0.7, 0.7);
             return Color.fromRgb(1, 1, 1);
     }
-};
+}
 
 /**
  * Selects a red background color for cells containing invalid numbers.
@@ -1217,32 +1217,32 @@ const getBackgroundColor = (preset) => {
  * @param {*} preset If the given square is representing a given number
  * @returns A red color, differing according to the theme and if it is a given or open cell
  */
-const getInvalidBackgroundColor = (preset) => {
-    switch (game.settings.theme) {
+var getInvalidBackgroundColor = (preset) => {
+    switch(game.settings.theme) {
         case Theme.STANDARD:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.5, 0.2, 0.2);
             return Color.fromRgb(0.7, 0.4, 0.4);
         case Theme.DARK:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.9, 0.3, 0.3);
             return Color.fromRgb(0.5, 0, 0);
         case Theme.LIGHT:
-            if (preset)
+            if(preset)
                 return Color.fromRgb(0.9, 0.3, 0.3);
             return Color.fromRgb(1, 0.7, 0.7);
     }
-};
+}
 
-const resetBackgroundColors = () => {
-    for (let square of gameGrid.children) {
-        const cell = board[getBoardNum(square.row, square.column)];
+var resetBackgroundColors = () => {
+    for (var square of gameGrid.children) {
+        var cell = board[getBoardNum(square.row, square.column)];
         square.backgroundColor = getBackgroundColor(cell.isGiven)
     }
-};
+}
 
-const getBorderColor = () => {
-    switch (game.settings.theme) {
+var getBorderColor = () => {
+    switch(game.settings.theme) {
         case Theme.STANDARD:
             return Color.fromRgb(0.7, 0.7, 0.7);
         case Theme.DARK:
@@ -1250,10 +1250,10 @@ const getBorderColor = () => {
         case Theme.LIGHT:
             return Color.fromRgb(0.3, 0.3, 0.3);
     }
-};
+}
 
-const getSelectedBorderColor = () => {
-    switch (game.settings.theme) {
+var getSelectedBorderColor = () => {
+    switch(game.settings.theme) {
         case Theme.STANDARD:
             return Color.fromRgb(0, 0, 1);
         case Theme.DARK:
@@ -1261,18 +1261,18 @@ const getSelectedBorderColor = () => {
         case Theme.LIGHT:
             return Color.fromRgb(0, 0, 1);
     }
-};
+}
 
-const markInvalidCells = (wrongCells) => {
-    for (let wrongCell of wrongCells) {
-        const row = wrongCell[0];
-        const column = wrongCell[1];
-        const wrongSquare = gameGrid.children[row * 9 + column];
+var markInvalidCells = (wrongCells) => {
+    for (var wrongCell of wrongCells) {
+        var row = wrongCell[0];
+        var column = wrongCell[1];
+        var wrongSquare = gameGrid.children[row * 9 + column];
         //log("(" + row + "," + column + "): " + wrongSquare.content.children[0].text);
-        const isGiven = board[row * 9 + column].isGiven;
+        var isGiven = board[row * 9 + column].isGiven;
         wrongSquare.backgroundColor = getInvalidBackgroundColor(isGiven);
     }
-};
+}
 
 /**
  * Gets the currently used time for the open puzzle (if existing) and updates the timer.
@@ -1281,14 +1281,14 @@ const markInvalidCells = (wrongCells) => {
  */
 var updateTimerInSave = () => {
     // No puzzle open or not started
-    if (difficulty === undefined || difficulty == null || currentStartTime == null)
+    if(difficulty == undefined || difficulty == null || currentStartTime == null)
         return;
 
-    const timer = getTimerForDifficulty(difficulty);
+    var timer = getTimerForDifficulty(difficulty);
 
     //log(timer.time);
 
-    const elapsedTime = getElapsedTime(timer);
+    var elapsedTime = getElapsedTime(timer);
 
     timer.time = elapsedTime;
 
@@ -1297,12 +1297,12 @@ var updateTimerInSave = () => {
     currentStartTime = Date.now();
 }
 
-const UpdateBoardAndSquare = (cell, cellIndex) => {
+var UpdateBoardAndSquare = (cell, cellIndex) => {
     board[cellIndex] = cell;
 
-    const square = GetSquare(cellIndex);
+    var square = GetSquare(cellIndex);
     updateSquareFromCell(square, cell);
-};
+}
 
 var GetSquare = (index) => {
     return gameGrid.children[index];
@@ -1313,12 +1313,12 @@ var GetSquare = (index) => {
  * This should adapt the size to the device's screen size.
  * @param {*} type The type of the UI element.
  */
-const getFontSize = (type) => {
-    const deviceSize = getDeviceSizeType();
+var getFontSize = (type) => {
+    var deviceSize = getDeviceSizeType();
 
     switch (type) {
         case LABEL:
-            switch (deviceSize) {
+            switch (deviceSize){
                 case TINY:
                     return 12;
                 case SMALL:
@@ -1333,7 +1333,7 @@ const getFontSize = (type) => {
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
         case BUTTON:
-            switch (deviceSize) {
+            switch (deviceSize){
                 case TINY:
                     return 12;
                 case SMALL:
@@ -1348,7 +1348,7 @@ const getFontSize = (type) => {
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
         case NUMBER_BUTTON:
-            switch (deviceSize) {
+            switch (deviceSize){
                 case TINY:
                     return 12;
                 case SMALL:
@@ -1363,7 +1363,7 @@ const getFontSize = (type) => {
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
         case GRID_CELL:
-            switch (deviceSize) {
+            switch (deviceSize){
                 case TINY:
                     return 12;
                 case SMALL:
@@ -1378,7 +1378,7 @@ const getFontSize = (type) => {
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
         case MARK:
-            switch (deviceSize) {
+            switch (deviceSize){
                 case TINY:
                     return 8;
                 case SMALL:
@@ -1395,12 +1395,12 @@ const getFontSize = (type) => {
         default:
             throw new Error("Cannot calculate font size for unexpected type " + type + "!");
     }
-};
+}
 
-const getNumberButtonSize = () => {
-    const deviceSize = getDeviceSizeType();
+var getNumberButtonSize = () => {
+    var deviceSize = getDeviceSizeType();
 
-    switch (deviceSize) {
+    switch (deviceSize){
         case TINY:
             return 25;
         case SMALL:
@@ -1414,12 +1414,12 @@ const getNumberButtonSize = () => {
         default:
             throw new Error("Cannot calculate number button size for unknown device size type " + deviceSize + "!");
     }
-};
+}
 
-const getActionButtonSize = () => {
-    const deviceSize = getDeviceSizeType();
+var getActionButtonSize = () => {
+    var deviceSize = getDeviceSizeType();
 
-    switch (deviceSize) {
+    switch (deviceSize){
         case TINY:
             return {
                 "Width": 75,
@@ -1448,9 +1448,9 @@ const getActionButtonSize = () => {
         default:
             throw new Error("Cannot calculate action button size for unknown device size type " + deviceSize + "!");
     }
-};
+}
 
-const createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
+var createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
     let number = ui.createLabel({
         fontSize: fontSizeNumber,
         horizontalOptions: LayoutOptions.CENTER,
@@ -1462,7 +1462,7 @@ const createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
     let layoutOptions = [LayoutOptions.START, LayoutOptions.CENTER, LayoutOptions.END]
     for (let v = 0; v < layoutOptions.length; v++) {
         for (let h = 0; h < layoutOptions.length; h++) {
-            if (h === 1 && v !== 1 || h !== 1 && v === 1)
+            if(h == 1 && v != 1 || h != 1 && v == 1)
                 continue;
 
             let markLabel = ui.createLabel({
@@ -1479,10 +1479,10 @@ const createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
         children: pencilMarks
     });
 
-    const square = ui.createFrame({
+    var square = ui.createFrame({
         row: i,
         column: j,
-        margin: new Thickness(1, 1, j % 3 === 2 ? 4 : 1, i % 3 === 2 ? 4 : 1),
+        margin: new Thickness(1, 1, j % 3 == 2 ? 4 : 1, i % 3 == 2 ? 4 : 1),
         backgroundColor: getBackgroundColor(cell.isGiven),
         borderColor: getBorderColor(),
         content: ui.createGrid({
@@ -1490,31 +1490,32 @@ const createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
         }),
     });
 
-    if (isEmpty(cell)) {
-        if (cell.cornerMarks.length > 0)
+    if(isEmpty(cell)) {
+        if(cell.cornerMarks.length > 0)
             setCornerNumbers(cell, square.content);
 
-        if (cell.centerMarks.length > 0)
+        if(cell.centerMarks.length > 0)
             setCenterNumbers(cell, square.content);
     }
 
     square.onTouched = (e) => {
-        if (e.type === TouchType.PRESSED) {
-            if (isFinished(difficulty))
+        if (e.type == TouchType.PRESSED) {
+            if(isFinished(difficulty))
                 return;
 
-            if (selectedGivenSquare != null) {
+            if(selectedGivenSquare != null) {
                 selectedGivenSquare.borderColor = getBorderColor();
             }
 
-            if (selectedSquare != null) {
+            if(selectedSquare != null) {
                 selectedSquare.borderColor = getBorderColor();
             }
 
-            if (cell.isGiven) {
+            if(cell.isGiven) {
                 selectedGivenSquare = square;
                 selectedSquare = null;
-            } else {
+            }
+            else{
                 selectedSquare = square;
                 selectedGivenSquare = null;
             }
@@ -1524,9 +1525,9 @@ const createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
     }
 
     return square;
-};
+}
 
-const createGameGrid = (board) => {
+var createGameGrid = (board) => {
     gameGrid = ui.createGrid({
         columnSpacing: 1,
         rowSpacing: 1,
@@ -1538,22 +1539,22 @@ const createGameGrid = (board) => {
     let c = [];
     for (let x = 0; x < 9; x++) {
         for (let y = 0; y < 9; y++) {
-            const cell = board[getBoardNum(x, y)];
-            const square = createSquare(x, y, cell, fontSizeNumber, fontSizeMark);
+            var cell = board[getBoardNum(x, y)];
+            var square = createSquare(x, y, cell, fontSizeNumber, fontSizeMark);
             c.push(square);
         }
     }
     gameGrid.children = c;
 
     return gameGrid;
-};
+}
 
-const createNumberButtonsGrid = (difficulty, board, stateLabel) => {
+var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
     let fontSize = getFontSize(NUMBER_BUTTON);
     let numberButtons = [];
-    for (let i = 1; i <= 9; i++) {
-        const buttonSize = getNumberButtonSize();
-        const numberButton = ui.createButton({
+    for(let i = 1; i <= 9; i++) {
+        var buttonSize = getNumberButtonSize();
+        var numberButton = ui.createButton({
             fontSize: fontSize,
             heightRequest: buttonSize,
             widthRequest: buttonSize,
@@ -1561,49 +1562,50 @@ const createNumberButtonsGrid = (difficulty, board, stateLabel) => {
             column: i - 1,
             text: `${i}`,
             onClicked: () => {
-                if (selectedSquare === null || isFinished(difficulty))
+                if(selectedSquare === null || isFinished(difficulty))
                     return;
 
                 log("clicked " + i + " for mode " + textForMode(mode) + " and square (" + selectedSquare.row + "," + selectedSquare.column + ")");
 
-                if (currentStartTime == null) {
+                if(currentStartTime == null) {
                     currentStartTime = Date.now();
                 }
 
-                const cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
-                const cell = board[cellIndex];
+                var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
+                var cell = board[cellIndex];
 
                 addToUndoStack(difficulty, cell, cellIndex);
                 resetRedoStack(difficulty);
 
                 setNumber(i, board, selectedSquare.row, selectedSquare.column);
-                if (mode !== NORMAL_MODE)
+                if(mode != NORMAL_MODE)
                     return;
 
                 resetBackgroundColors();
 
-                const checkResult = checkBoard(board);
-                const fullBoard = hasAllNumbers(board);
-                if (checkResult[0] && fullBoard) {
-                    const timer = getTimerForDifficulty(difficulty);
-                    const elapsedTime = getElapsedTime(timer);
+                var checkResult = checkBoard(board);
+                var fullBoard = hasAllNumbers(board);
+                if(checkResult[0] && fullBoard) {
+                    var timer = getTimerForDifficulty(difficulty);
+                    var elapsedTime = getElapsedTime(timer);
 
                     timer.time = elapsedTime;
 
-                    const timerString = TimerAsString(timer);
+                    var timerString = TimerAsString(timer);
 
                     UpdateTimerIfBetter(difficulty);
 
                     log("Won " + difficulty + " in " + timerString);
-                    const stars = rewardForDifficulty(difficulty);
+                    var stars = rewardForDifficulty(difficulty);
                     increaseCurrency(stars);
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
                     resetDifficulty(difficulty);
                     undoButton.isEnabled = false;
 
                     gameGrid.FadeTo(0.5, 10);
-                } else {
-                    if (fullBoard)
+                }
+                else {
+                    if(fullBoard)
                         stateLabel.text = "Solution is incorrect!";
 
                     markInvalidCells(checkResult[1]);
@@ -1618,13 +1620,13 @@ const createNumberButtonsGrid = (difficulty, board, stateLabel) => {
     });
 
     return numberButtonGrid;
-};
+}
 
-const createButtonsGrid = (difficulty) => {
+var createButtonsGrid = (difficulty) => {
     let buttons = [null, null, null, null, null];
 
-    const buttonSize = getActionButtonSize();
-    const fontSize = getFontSize(BUTTON);
+    var buttonSize = getActionButtonSize();
+    var fontSize = getFontSize(BUTTON);
     buttons[0] = ui.createButton({
         fontSize: fontSize,
         widthRequest: buttonSize.Width,
@@ -1633,11 +1635,11 @@ const createButtonsGrid = (difficulty) => {
         column: 0,
         text: "Clear",
         onClicked: () => {
-            if (selectedSquare === null || isFinished(difficulty))
+            if(selectedSquare === null || isFinished(difficulty))
                 return;
 
-            const cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
-            const cell = board[cellIndex];
+            var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
+            var cell = board[cellIndex];
 
             addToUndoStack(difficulty, cell, cellIndex);
             resetRedoStack(difficulty);
@@ -1646,8 +1648,8 @@ const createButtonsGrid = (difficulty) => {
 
             resetBackgroundColors();
 
-            const checkResult = checkBoard(board);
-            if (checkResult[1].size > 0)
+            var checkResult = checkBoard(board);
+            if(checkResult[1].size > 0)
                 markInvalidCells(checkResult[1]);
         }
     });
@@ -1720,20 +1722,20 @@ const createButtonsGrid = (difficulty) => {
     });
 
     return buttonGrid;
-};
+}
 
-const createPopupUI = (difficulty, board) => {
-    const gameGrid = createGameGrid(board);
+var createPopupUI = (difficulty, board) => {
+    var gameGrid = createGameGrid(board);
 
-    const currentTimer = getTimerForDifficulty(difficulty);
-    const currentTimerString = TimerAsString(currentTimer);
+    var currentTimer = getTimerForDifficulty(difficulty);
+    var currentTimerString = TimerAsString(currentTimer);
 
-    const timerString = "Time: " + currentTimerString;
+    var timerString = "Time: " + currentTimerString;
 
-    const bestTimer = getBestTimerForDifficulty(difficulty);
-    const bestTimerReadable = TimerAsString(bestTimer);
+    var bestTimer = getBestTimerForDifficulty(difficulty);
+    var bestTimerReadable = TimerAsString(bestTimer);
 
-    const bestTimerString = "Best Time: " + bestTimerReadable;
+    var bestTimerString = "Best Time: " + bestTimerReadable;
 
     let fontSize = getFontSize(LABEL);
     timerLabel = ui.createLatexLabel({
@@ -1748,15 +1750,15 @@ const createPopupUI = (difficulty, board) => {
         margin: new Thickness(0, 3, 0, 5),
         fontSize: fontSize
     });
-    const stateLabel = ui.createLatexLabel({
+    var stateLabel = ui.createLatexLabel({
         text: "Solve for " + rewardForDifficulty(difficulty) + " stars",
         horizontalTextAlignment: TextAlignment.CENTER,
         margin: new Thickness(0, 3, 0, 5),
         fontSize: fontSize
     });
 
-    const numberButtonGrid = createNumberButtonsGrid(difficulty, board, stateLabel);
-    const buttonGrid = createButtonsGrid(difficulty);
+    var numberButtonGrid = createNumberButtonsGrid(difficulty, board, stateLabel);
+    var buttonGrid = createButtonsGrid(difficulty);
 
     popup = ui.createPopup({
         title: `Sudoku - ${difficulty}`,
@@ -1775,25 +1777,26 @@ const createPopupUI = (difficulty, board) => {
             log("Popup closed");
 
             // When closed by us after pressing "Replay" timer is already taken care of
-            if (currentStartTime != null) {
-                const timer = getTimerForDifficulty(difficulty);
-                const elapsedTime = getElapsedTime(timer);
+            if(currentStartTime != null){
+                var timer = getTimerForDifficulty(difficulty);
+                var elapsedTime = getElapsedTime(timer);
 
                 timer.time = elapsedTime;
 
                 currentStartTime = null;
-            } else {
-                difficulty === undefined;
+            }
+            else {
+                difficulty == undefined;
             }
         }
     });
 
-    const checkResult = checkBoard(board);
-    if (checkResult[1].size > 0)
+    var checkResult = checkBoard(board);
+    if(checkResult[1].size > 0)
         markInvalidCells(checkResult[1]);
 
     return popup;
-};
+}
 
 var popup = null;
 var selectedGivenSquare = null;
@@ -1801,7 +1804,7 @@ var selectedSquare = null;
 var mode = NORMAL_MODE;
 
 var textForMode = (mode) => {
-    switch (mode) {
+    switch(mode) {
         case NORMAL_MODE:
             return "Normal";
         case CORNER_MODE:
@@ -1818,9 +1821,9 @@ var textForMode = (mode) => {
 var showSudokuPopup = (difficulty) => {
     selectedSquare = null;
     mode = NORMAL_MODE;
-    let board = getBoard(difficulty)
+    board = getBoard(difficulty)
 
-    const popup = createPopupUI(difficulty, board);
+    var popup = createPopupUI(difficulty, board);
 
     popup.show();
 }
@@ -1828,46 +1831,46 @@ var showSudokuPopup = (difficulty) => {
 
 //#region Sudoku Minigame Utility
 var getBoard = (difficulty) => {
-    let randomBoard = null;
-    switch (difficulty) {
+    var randomBoard = null;
+    switch(difficulty) {
         case EASY:
-            if (easyBoard == null || easyBoard.length === 0) {
+            if(easyBoard == null || easyBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 easyBoard = generate(randomBoard);
             }
             return easyBoard;
         case MEDIUM:
-            if (mediumBoard == null || mediumBoard.length === 0) {
+            if(mediumBoard == null || mediumBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 mediumBoard = generate(randomBoard);
             }
             return mediumBoard;
         case HARD:
-            if (hardBoard == null || hardBoard.length === 0) {
+            if(hardBoard == null || hardBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 hardBoard = generate(randomBoard);
             }
             return hardBoard;
         case EXPERT:
-            if (expertBoard == null || expertBoard.length === 0) {
+            if(expertBoard == null || expertBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 expertBoard = generate(randomBoard);
             }
             return expertBoard;
         case OMEGA:
-            if (omegaBoard == null || omegaBoard.length === 0) {
+            if(omegaBoard == null || omegaBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 omegaBoard = generate(randomBoard);
             }
             return omegaBoard;
         case DEVILISH:
-            if (devilishBoard == null || devilishBoard.length === 0) {
+            if(devilishBoard == null || devilishBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 devilishBoard = generate(randomBoard);
             }
             return devilishBoard;
         case TEST:
-            if (testBoard == null || testBoard.length === 0) {
+            if(testBoard == null || testBoard.length == 0) {
                 randomBoard = getRandomBoard(difficulty);
                 testBoard = generate(randomBoard);
             }
@@ -1878,7 +1881,7 @@ var getBoard = (difficulty) => {
 }
 
 var clearAndSetBoard = (difficulty) => {
-    let board = null;
+    board = null;
     selectedSquare = null;
     mode = NORMAL_MODE;
 
@@ -1896,8 +1899,8 @@ var checkBoard = (board) => {
     return checkForDuplicates(board, hasAllNumbers(board));
 }
 
-const setNormalNumber = (number, cell, gridCellContent) => {
-    if (cell.number === number) {
+var setNormalNumber = (number, cell, gridCellContent) => {
+    if(cell.number == number) {
         cell.number = 0;
         cell.cornerMarks = []
         cell.centerMarks = []
@@ -1905,44 +1908,45 @@ const setNormalNumber = (number, cell, gridCellContent) => {
         return;
     }
 
-    const marksGrid = gridCellContent.children[1];
-    for (let j = 0; j < marksGrid.children.length; j++) {
+    var marksGrid = gridCellContent.children[1];
+    for(var j = 0; j < marksGrid.children.length; j++) {
         marksGrid.children[j].text = ""
     }
     cell.number = number;
     gridCellContent.children[0].text = `${number}`
-};
+}
 
-const setNormalNumberFromCell = (cell, gridCellContent) => {
-    if (cell.number < 1) {
+var setNormalNumberFromCell = (cell, gridCellContent) => {
+    if(cell.number < 1) {
         gridCellContent.children[0].text = "";
         return;
     }
 
-    const marksGrid = gridCellContent.children[1];
-    for (let j = 0; j < marksGrid.children.length; j++) {
+    var marksGrid = gridCellContent.children[1];
+    for(var j = 0; j < marksGrid.children.length; j++) {
         marksGrid.children[j].text = ""
     }
 
     gridCellContent.children[0].text = `${cell.number}`
-};
+}
 
-const clearCornerNumbers = (gridCellContent) => {
+var clearCornerNumbers = (gridCellContent) => {
     for (let i of [0, 1, 3, 4]) {
         gridCellContent.children[1].children[i].text = "";
     }
-};
+}
 
 var setCornerNumbers = (cell, gridCellContent) => {
     let markIndices = [0, 1, 3, 4, 0, 1, 3, 4, 4]
-    for (let i = 0; i < cell.cornerMarks.length; i++) {
-        const markIndex = markIndices[i];
+    for(let i = 0; i < cell.cornerMarks.length; i++) {
+        var markIndex = markIndices[i];
 
-        if (i <= 3) {
+        if(i <= 3) {
             gridCellContent.children[1].children[markIndex].text = [0, 3].includes(markIndex)
                 ? ` ${cell.cornerMarks[i]}`
                 : `${cell.cornerMarks[i]} `;
-        } else {
+        }
+        else {
             gridCellContent.children[1].children[markIndex].text += [0, 3].includes(markIndex)
                 ? ` ${cell.cornerMarks[i]}`
                 : `${cell.cornerMarks[i]} `;
@@ -1950,17 +1954,17 @@ var setCornerNumbers = (cell, gridCellContent) => {
     }
 }
 
-const setCornerNumber = (number, cell, gridCellContent) => {
-    if (!isEmpty(cell))
+var setCornerNumber = (number, cell, gridCellContent) => {
+    if(!isEmpty(cell))
         return;
 
-    if (cell.cornerMarks.length === 0) {
+    if(cell.cornerMarks.length == 0) {
         cell.cornerMarks.push(number);
         gridCellContent.children[1].children[0].text = ` ${number}`;
         return;
     }
 
-    if (cell.cornerMarks.includes(number)) {
+    if(cell.cornerMarks.includes(number)) {
         log(cell.cornerMarks.join(', '));
         cell.cornerMarks.splice(cell.cornerMarks.indexOf(number), 1);
         log(cell.cornerMarks.join(', '));
@@ -1971,40 +1975,40 @@ const setCornerNumber = (number, cell, gridCellContent) => {
 
     clearCornerNumbers(selectedSquare.content);
     setCornerNumbers(cell, selectedSquare.content);
-};
+}
 
-const setCornerNumbersFromCell = (cell, square, clearBeforeSet) => {
-    if (!isEmpty(cell))
+var setCornerNumbersFromCell = (cell, square, clearBeforeSet) => {
+    if(!isEmpty(cell))
         return;
 
-    if (cell.cornerMarks.length === 0)
+    if(cell.cornerMarks.length == 0)
         return;
 
-    if (clearBeforeSet)
+    if(clearBeforeSet)
         clearCornerNumbers(square.content);
 
     setCornerNumbers(cell, square.content);
-};
+}
 
-const clearCenterNumbers = (gridCellContent) => {
+var clearCenterNumbers = (gridCellContent) => {
     gridCellContent.children[1].children[2].text = "";
-};
+}
 
 var setCenterNumbers = (cell, gridCellContent) => {
     gridCellContent.children[1].children[2].text = cell.centerMarks.join('');
 }
 
-const setCenterNumber = (number, cell, gridCellContent) => {
-    if (!isEmpty(cell))
+var setCenterNumber = (number, cell, gridCellContent) => {
+    if(!isEmpty(cell))
         return;
 
-    if (cell.centerMarks.length === 0) {
+    if(cell.centerMarks.length == 0) {
         cell.centerMarks.push(number);
         gridCellContent.children[1].children[2].text = `${number}`;
         return;
     }
 
-    if (cell.centerMarks.includes(number)) {
+    if(cell.centerMarks.includes(number)) {
         cell.centerMarks.splice(cell.centerMarks.indexOf(number), 1);
     } else {
         cell.centerMarks.push(number);
@@ -2012,21 +2016,21 @@ const setCenterNumber = (number, cell, gridCellContent) => {
     }
 
     setCenterNumbers(cell, gridCellContent);
-};
+}
 
-const setCenterNumbersFromCell = (cell, square) => {
-    if (!isEmpty(cell))
+var setCenterNumbersFromCell = (cell, square) => {
+    if(!isEmpty(cell))
         return;
 
-    if (cell.centerMarks.length === 0)
+    if(cell.centerMarks.length == 0)
         return;
 
     setCenterNumbers(cell, square.content);
-};
+}
 
 var setNumber = (number, board, r, c) => {
-    if (selectedSquare != null) {
-        const cell = board[getBoardNum(r, c)];
+    if(selectedSquare != null) {
+        var cell = board[getBoardNum(r, c)];
         switch (mode) {
             case NORMAL_MODE:
                 setNormalNumber(number, cell, selectedSquare.content);
@@ -2053,7 +2057,7 @@ var updateSquareFromCell = (square, cell) => {
 
     setNormalNumberFromCell(cell, square.content);
 
-    if (cell.number >= 1)
+    if(cell.number >= 1)
         return;
 
     setCornerNumbersFromCell(cell, square, false);
@@ -2078,7 +2082,7 @@ var clearSquare = (gridCellContent) => {
  * @param {*} gridCellContent
  */
 var clearCell = (board, r, c, gridCellContent) => {
-    const cell = board[getBoardNum(r, c)];
+    var cell = board[getBoardNum(r, c)];
     cell.number = 0;
     cell.cornerMarks = [];
     cell.centerMarks = [];
@@ -2090,110 +2094,124 @@ var increaseCurrency = (reward) => {
 }
 
 var getStackForModeAndDifficulty = (difficulty, operationMode) => {
-    let difficultyStack;
-    switch (difficulty) {
+    var difficultyStack;
+    switch(difficulty) {
         case EASY:
-            if (operationMode === UNDO_MODE) {
-                if (easyUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(easyUndoStack == null)
                     easyUndoStack = [];
 
                 difficultyStack = easyUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (easyRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(easyRedoStack == null)
                     easyRedoStack = [];
 
                 difficultyStack = easyRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case MEDIUM:
-            if (operationMode === UNDO_MODE) {
-                if (mediumUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(mediumUndoStack == null)
                     mediumUndoStack = [];
 
                 difficultyStack = mediumUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (mediumRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(mediumRedoStack == null)
                     mediumRedoStack = [];
 
                 difficultyStack = mediumRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case HARD:
-            if (operationMode === UNDO_MODE) {
-                if (hardUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(hardUndoStack == null)
                     hardUndoStack = [];
 
                 difficultyStack = hardUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (hardRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(hardRedoStack == null)
                     hardRedoStack = [];
 
                 difficultyStack = hardRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case EXPERT:
-            if (operationMode === UNDO_MODE) {
-                if (expertUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(expertUndoStack == null)
                     expertUndoStack = [];
 
                 difficultyStack = expertUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (expertRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(expertRedoStack == null)
                     expertRedoStack = [];
 
                 difficultyStack = expertRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case OMEGA:
-            if (operationMode === UNDO_MODE) {
-                if (omegaUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(omegaUndoStack == null)
                     omegaUndoStack = [];
 
                 difficultyStack = omegaUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (omegaRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(omegaRedoStack == null)
                     omegaRedoStack = [];
 
                 difficultyStack = omegaRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case DEVILISH:
-            if (operationMode === UNDO_MODE) {
-                if (devilishUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(devilishUndoStack == null)
                     devilishUndoStack = [];
 
                 difficultyStack = devilishUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (devilishRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(devilishRedoStack == null)
                     devilishRedoStack = [];
 
                 difficultyStack = devilishRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
         case TEST:
-            if (operationMode === UNDO_MODE) {
-                if (testUndoStack == null)
+            if(operationMode == UNDO_MODE){
+                if(testUndoStack == null)
                     testUndoStack = [];
 
                 difficultyStack = testUndoStack;
-            } else if (operationMode === REDO_MODE) {
-                if (testRedoStack == null)
+            }
+            else if (operationMode == REDO_MODE) {
+                if(testRedoStack == null)
                     testRedoStack = [];
 
                 difficultyStack = testRedoStack;
-            } else {
+            }
+            else{
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
@@ -2205,7 +2223,7 @@ var getStackForModeAndDifficulty = (difficulty, operationMode) => {
 }
 
 var resetUndoRedoStacks = (difficulty) => {
-    switch (difficulty) {
+    switch(difficulty) {
         case EASY:
             easyUndoStack = [];
             easyRedoStack = [];
@@ -2240,7 +2258,7 @@ var resetUndoRedoStacks = (difficulty) => {
 }
 
 var resetRedoStack = (difficulty) => {
-    let difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
+    var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
     difficultyRedoStack = [];
     redoButton.isEnabled = false;
 }
@@ -2252,12 +2270,12 @@ var resetRedoStack = (difficulty) => {
  * @param {number} cellIndex The index of the saved cell in the board
  */
 var addToUndoStack = (difficulty, cell, cellIndex) => {
-    const undoState = {
+    var undoState = {
         cellIndex: cellIndex,
         cell: deepcopyCell(cell)
     };
 
-    const difficultyUndoStack = getStackForModeAndDifficulty(difficulty, UNDO_MODE);
+    var difficultyUndoStack = getStackForModeAndDifficulty(difficulty, UNDO_MODE);
     difficultyUndoStack.push(undoState);
 
     undoButton.isEnabled = true;
@@ -2269,17 +2287,17 @@ var addToUndoStack = (difficulty, cell, cellIndex) => {
  * @param {*} cell The cell before an action took place, to save it for future restoration
  * @param {number} cellIndex The index of the saved cell in the board
  */
-const addToRedoStack = (difficulty, cell, cellIndex) => {
-    const redoState = {
+var addToRedoStack = (difficulty, cell, cellIndex) => {
+    var redoState = {
         cellIndex: cellIndex,
         cell: deepcopyCell(cell)
     };
 
-    const difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
+    var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
     difficultyRedoStack.push(redoState);
 
     redoButton.isEnabled = true;
-};
+}
 
 /**
  * Undo the last taken action. This will pop the latest entry from the undo stack, update the board, update the UI and add the cell to the redo stack.
@@ -2297,52 +2315,45 @@ var redo = (difficulty) => {
     restoreState(difficulty, REDO_MODE);
 }
 
-
-//#region DEBUG
-const logObject = (object, prefix = "") => {
-    let output = '';
-    for (let property in object) {
-        output += property + ': ' + object[property] + '; ';
-    }
-    log(prefix + "object: " + output);
-};
 var restoreState = (difficulty, operationMode) => {
-    if (operationMode !== UNDO_MODE && operationMode !== REDO_MODE)
+    if(operationMode != UNDO_MODE && operationMode != REDO_MODE)
         throw new Error("Unrecognized operation mode " + operationMode + "; cannot proceed");
 
-    const difficultyStack = getStackForModeAndDifficulty(difficulty, operationMode);
-    const previousState = difficultyStack.pop();
-    const currentState = board[previousState.cellIndex];
+    var difficultyStack = getStackForModeAndDifficulty(difficulty, operationMode);
+    var previousState = difficultyStack.pop();
+    var currentState = board[previousState.cellIndex];
 
-    const operation = operationMode === UNDO_MODE ? "Undo" : "Redo";
+    var operation = operationMode == UNDO_MODE ? "Undo" : "Redo";
     logObject(previousState, operation + " to following cell state: ");
     logObject(previousState.cell, "Cell: ");
 
     UpdateBoardAndSquare(previousState.cell, previousState.cellIndex);
 
-    if (operationMode === UNDO_MODE) {
+    if(operationMode == UNDO_MODE) {
         addToRedoStack(difficulty, currentState, previousState.cellIndex);
-    } else {
+    }
+    else
+    {
         addToUndoStack(difficulty, currentState, previousState.cellIndex);
     }
 
     log(difficultyStack.length);
-    if (difficultyStack.length === 0) {
-        const operationButton = operationMode === UNDO_MODE ? undoButton : redoButton;
+    if(difficultyStack.length == 0) {
+        var operationButton = operationMode == UNDO_MODE ? undoButton : redoButton;
         operationButton.isEnabled = false;
     }
 
     // Update invalid markers
     resetBackgroundColors();
-    const checkResult = checkBoard(board);
-    if (checkResult[1].size > 0)
+    var checkResult = checkBoard(board);
+    if(checkResult[1].size > 0)
         markInvalidCells(checkResult[1]);
 }
 
 var getBestTimerForDifficulty = (difficulty) => {
-    switch (difficulty) {
+    switch(difficulty) {
         case EASY:
-            if (easyBestTimer == null) {
+            if(easyBestTimer == null){
                 easyBestTimer = {
                     time: -1,
                     hints: -1
@@ -2350,7 +2361,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return easyBestTimer;
         case MEDIUM:
-            if (mediumBestTimer == null) {
+            if(mediumBestTimer == null){
                 mediumBestTimer = {
                     time: -1,
                     hints: -1
@@ -2358,7 +2369,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return mediumBestTimer;
         case HARD:
-            if (hardBestTimer == null) {
+            if(hardBestTimer == null){
                 hardBestTimer = {
                     time: -1,
                     hints: -1
@@ -2366,7 +2377,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return hardBestTimer;
         case EXPERT:
-            if (expertBestTimer == null) {
+            if(expertBestTimer == null){
                 expertBestTimer = {
                     time: -1,
                     hints: -1
@@ -2374,7 +2385,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return expertBestTimer;
         case OMEGA:
-            if (omegaBestTimer == null) {
+            if(omegaBestTimer == null){
                 omegaBestTimer = {
                     time: -1,
                     hints: -1
@@ -2382,7 +2393,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return omegaBestTimer;
         case DEVILISH:
-            if (devilishBestTimer == null) {
+            if(devilishBestTimer == null){
                 devilishBestTimer = {
                     time: -1,
                     hints: -1
@@ -2390,7 +2401,7 @@ var getBestTimerForDifficulty = (difficulty) => {
             }
             return devilishBestTimer;
         case TEST:
-            if (testBestTimer == null) {
+            if(testBestTimer == null){
                 testBestTimer = {
                     time: -1,
                     hints: -1
@@ -2404,9 +2415,9 @@ var getBestTimerForDifficulty = (difficulty) => {
 
 var getTimerForDifficulty = (difficulty) => {
     //log("Getting timer for difficulty " + difficulty);
-    switch (difficulty) {
+    switch(difficulty) {
         case EASY:
-            if (easyTimer == null) {
+            if(easyTimer == null){
                 easyTimer = {
                     time: 0,
                     hints: 0
@@ -2414,7 +2425,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return easyTimer;
         case MEDIUM:
-            if (mediumTimer == null) {
+            if(mediumTimer == null){
                 mediumTimer = {
                     time: 0,
                     hints: 0
@@ -2422,7 +2433,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return mediumTimer;
         case HARD:
-            if (hardTimer == null) {
+            if(hardTimer == null){
                 hardTimer = {
                     time: 0,
                     hints: 0
@@ -2430,7 +2441,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return hardTimer;
         case EXPERT:
-            if (expertTimer == null) {
+            if(expertTimer == null){
                 expertTimer = {
                     time: 0,
                     hints: 0
@@ -2438,7 +2449,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return expertTimer;
         case OMEGA:
-            if (omegaTimer == null) {
+            if(omegaTimer == null){
                 omegaTimer = {
                     time: 0,
                     hints: 0
@@ -2446,7 +2457,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return omegaTimer;
         case DEVILISH:
-            if (devilishTimer == null) {
+            if(devilishTimer == null){
                 devilishTimer = {
                     time: 0,
                     hints: 0
@@ -2454,7 +2465,7 @@ var getTimerForDifficulty = (difficulty) => {
             }
             return devilishTimer;
         case TEST:
-            if (testTimer == null) {
+            if(testTimer == null){
                 testTimer = {
                     time: 0,
                     hints: 0
@@ -2470,7 +2481,7 @@ var resetTimer = (difficulty) => {
     currentStartTime = null;
 
     log("Resetting timer for difficulty " + difficulty);
-    switch (difficulty) {
+    switch(difficulty) {
         case EASY:
             easyTimer.time = 0;
             easyTimer.hints = 0;
@@ -2505,35 +2516,35 @@ var resetTimer = (difficulty) => {
 }
 
 var UpdateTimerIfBetter = (difficulty) => {
-    const timer = getTimerForDifficulty(difficulty);
-    const bestTimer = getBestTimerForDifficulty(difficulty);
+    var timer = getTimerForDifficulty(difficulty);
+    var bestTimer = getBestTimerForDifficulty(difficulty);
 
-    if (bestTimer.time < 0 || timer.time < bestTimer.time ||
-        timer.time === bestTimer.time && timer.hints < bestTimer.hints) {
+    if(bestTimer.time < 0 || timer.time < bestTimer.time ||
+        timer.time == bestTimer.time && timer.hints < bestTimer.hints) {
         bestTimer.time = timer.time;
         bestTimer.hints = timer.hints;
     }
 }
 
-var getElapsedTime = (timer) => {
-    const currentTime = Date.now();
-    const difference = currentTime - currentStartTime + timer.time;
+var getElapsedTime  = (timer) => {
+    var currentTime = Date.now();
+    var difference = currentTime - currentStartTime + timer.time;
 
     return difference;
 }
 
 var updateTimerLabel = () => {
-    const timer = getTimerForDifficulty(difficulty);
+    var timer = getTimerForDifficulty(difficulty);
 
-    const elapsedTime = getElapsedTime(timer);
+    var elapsedTime = getElapsedTime(timer);
 
-    const tempTimer = {
+    var tempTimer = {
         time: elapsedTime,
         hints: timer.hints
     };
 
     //logObject(tempTimer);
-    const timerString = TimerAsString(tempTimer);
+    var timerString = TimerAsString(tempTimer);
     timerLabel.text = "Time: " + timerString;
 }
 
@@ -2546,34 +2557,34 @@ var updateTimerLabel = () => {
  * @returns The time converted to a string formatted hh:mm:ss:fff or - when no time was set so far; optionally includes (X hints)
  */
 var TimerAsString = (timer, includeHints) => {
-    if (timer.time < 0)
+    if(timer.time < 0)
         return "-";
 
     //log("Creating human readable form of " + timer.time);
 
     //Get hours from milliseconds
-    const hours = timer.time / (1000 * 60 * 60);
-    const absoluteHours = Math.floor(hours);
-    const h = absoluteHours > 9 ? absoluteHours : '0' + absoluteHours;
+    var hours = timer.time / (1000 * 60 * 60);
+    var absoluteHours = Math.floor(hours);
+    var h = absoluteHours > 9 ? absoluteHours : '0' + absoluteHours;
 
     //Get remainder from hours and convert to minutes
-    const minutes = (hours - absoluteHours) * 60;
-    const absoluteMinutes = Math.floor(minutes);
-    const m = absoluteMinutes > 9 ? absoluteMinutes : '0' + absoluteMinutes;
+    var minutes = (hours - absoluteHours) * 60;
+    var absoluteMinutes = Math.floor(minutes);
+    var m = absoluteMinutes > 9 ? absoluteMinutes : '0' +  absoluteMinutes;
 
     //Get remainder from minutes and convert to seconds
-    const seconds = (minutes - absoluteMinutes) * 60;
-    const absoluteSeconds = Math.floor(seconds);
-    const s = absoluteSeconds > 9 ? absoluteSeconds : '0' + absoluteSeconds;
+    var seconds = (minutes - absoluteMinutes) * 60;
+    var absoluteSeconds = Math.floor(seconds);
+    var s = absoluteSeconds > 9 ? absoluteSeconds : '0' + absoluteSeconds;
 
     //Get remainder from seconds and convert to milliseconds
-    const milliseconds = (seconds - absoluteSeconds) * 1000;
-    const absoluteMilliSeconds = Math.floor(milliseconds);
-    const ms = absoluteMilliSeconds > 99 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds > 9 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds;
+    var milliseconds = (seconds - absoluteSeconds) * 1000;
+    var absoluteMilliSeconds = Math.floor(milliseconds);
+    var ms = absoluteMilliSeconds > 99 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds > 9 ? absoluteMilliSeconds : '0' + absoluteMilliSeconds;
 
-    let humanReadableString = h + ':' + m + ':' + s + ':' + ms;
+    var humanReadableString = h + ':' + m + ':' + s + ':' + ms;
 
-    if (includeHints) {
+    if(includeHints){
         humanReadableString = humanReadableString + " (" + timer.hints + " hints)";
     }
 
@@ -2601,8 +2612,8 @@ var isEmpty = (cell) => {
 }
 
 var hasAllNumbers = (board) => {
-    for (let i = 0; i < BOARD_SIZE; i++) {
-        if (board[i].number < 1) {
+    for(let i = 0; i < BOARD_SIZE; i++) {
+        if(board[i].number < 1) {
             return false;
         }
     }
@@ -2620,18 +2631,18 @@ var hasAllNumbers = (board) => {
  * and the second entry is an array holding [row, column] pairs of all numbers violating the rules (empty if solved)
  */
 var checkForDuplicates = (board, fullBoard) => {
-    let correct = fullBoard;
-    const wrongCells = new Set();
+    var correct = fullBoard;
+    var wrongCells = new Set();
 
     // Check rows
-    for (let r = 0; r < ROWS; r++) {
+    for(let r = 0; r < ROWS; r++) {
         for (let rc = 0; rc < COLS; rc++) {
             var currentNumber = board[getBoardNum(r, rc)].number;
-            if (currentNumber < 1)
+            if(currentNumber < 1)
                 continue;
-            for (let rcc = rc + 1; rcc < COLS; rcc++) {
-                const rowCompareNumber = board[getBoardNum(r, rcc)].number;
-                if (currentNumber === rowCompareNumber) {
+            for(let rcc = rc + 1; rcc < COLS; rcc++) {
+                var rowCompareNumber = board[getBoardNum(r, rcc)].number;
+                if(currentNumber == rowCompareNumber) {
                     correct = false;
                     wrongCells.add([r, rc]);
                     wrongCells.add([r, rcc]);
@@ -2641,14 +2652,14 @@ var checkForDuplicates = (board, fullBoard) => {
     }
 
     // Check columns
-    for (let c = 0; c < COLS; c++) {
+    for(let c = 0; c < COLS; c++) {
         for (let cr = 0; cr < ROWS; cr++) {
             var currentNumber = board[getBoardNum(cr, c)].number;
-            if (currentNumber < 1)
+            if(currentNumber < 1)
                 continue;
-            for (let crc = cr + 1; crc < ROWS; crc++) {
-                const columnCompareNumber = board[getBoardNum(crc, c)].number;
-                if (currentNumber === columnCompareNumber) {
+            for(let crc = cr + 1; crc < ROWS; crc++) {
+                var columnCompareNumber = board[getBoardNum(crc, c)].number;
+                if(currentNumber == columnCompareNumber) {
                     correct = false;
                     wrongCells.add([cr, c]);
                     wrongCells.add([crc, c]);
@@ -2658,20 +2669,20 @@ var checkForDuplicates = (board, fullBoard) => {
     }
 
     // Check boxes
-    for (let bri = 0; bri < ROWS; bri += 3) {
-        for (let bci = 0; bci < COLS; bci += 3) {
-            for (let br = 0; br < BOX_SIZE; br++) {
-                for (let bc = 0; bc < BOX_SIZE; bc++) {
+    for(let bri = 0; bri < ROWS; bri += 3) {
+        for(let bci = 0; bci < COLS; bci += 3) {
+            for(let br = 0; br < BOX_SIZE; br++) {
+                for(let bc = 0; bc < BOX_SIZE; bc++) {
                     var currentNumber = board[getBoardNum(bri + br, bci + bc)].number;
-                    if (currentNumber < 1)
+                    if(currentNumber < 1)
                         continue;
-                    for (let brc = 0; brc < BOX_SIZE; brc++) {
-                        for (let bcc = 0; bcc < BOX_SIZE; bcc++) {
-                            if (brc === br && bcc === bc)
+                    for(let brc = 0; brc < BOX_SIZE; brc++) {
+                        for(let bcc = 0; bcc < BOX_SIZE; bcc++) {
+                            if(brc == br && bcc == bc)
                                 continue;
 
-                            const boxCompareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
-                            if (currentNumber === boxCompareNumber) {
+                            var boxCompareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
+                            if(currentNumber == boxCompareNumber) {
                                 correct = false;
                                 wrongCells.add([bri + br, bci + bc]);
                                 wrongCells.add([bri + brc, bci + bcc]);
@@ -2686,11 +2697,11 @@ var checkForDuplicates = (board, fullBoard) => {
     return [correct, wrongCells];
 }
 
-const boardFromString = (boardString) => {
-    const board = [];
-    for (let i = 0; i < boardString.length; i++) {
-        const curChar = boardString.charAt(i);
-        const number = parseInt(curChar, 10);
+var boardFromString = (boardString) => {
+    var board = []
+    for(let i = 0; i < boardString.length; i++) {
+        var curChar = boardString.charAt(i);
+        var number = parseInt(curChar, 10);
 
         board[i] = {
             number: number,
@@ -2701,37 +2712,37 @@ const boardFromString = (boardString) => {
     }
 
     return board
-};
+}
 
 var getRandomBoard = (difficulty) => {
-    let boardString = '';
-    switch (difficulty) {
+    var boardString = ''
+    switch(difficulty) {
         case EASY:
-            var index = Math.min(easyPuzzles.length - 1, Math.round(Math.random() * easyPuzzles.length));
+            var index = Math.min(easyPuzzles.length -1 , Math.round(Math.random() * easyPuzzles.length));
             boardString = easyPuzzles[index];
             break;
         case MEDIUM:
-            var index = Math.min(mediumPuzzles.length - 1, Math.round(Math.random() * mediumPuzzles.length));
+            var index = Math.min(mediumPuzzles.length -1 , Math.round(Math.random() * mediumPuzzles.length));
             boardString = mediumPuzzles[index];
             break;
         case HARD:
-            var index = Math.min(hardPuzzles.length - 1, Math.round(Math.random() * hardPuzzles.length));
+            var index = Math.min(hardPuzzles.length -1 , Math.round(Math.random() * hardPuzzles.length));
             boardString = hardPuzzles[index];
             break;
         case EXPERT:
-            var index = Math.min(expertPuzzles.length - 1, Math.round(Math.random() * expertPuzzles.length));
+            var index = Math.min(expertPuzzles.length -1 , Math.round(Math.random() * expertPuzzles.length));
             boardString = expertPuzzles[index];
             break;
         case OMEGA:
-            var index = Math.min(omegaPuzzles.length - 1, Math.round(Math.random() * omegaPuzzles.length));
+            var index = Math.min(omegaPuzzles.length -1 , Math.round(Math.random() * omegaPuzzles.length));
             boardString = omegaPuzzles[index];
             break;
         case DEVILISH:
-            var index = Math.min(devilishPuzzles.length - 1, Math.round(Math.random() * devilishPuzzles.length));
+            var index = Math.min(devilishPuzzles.length -1 , Math.round(Math.random() * devilishPuzzles.length));
             boardString = devilishPuzzles[index];
             break;
         case TEST:
-            var index = Math.min(testPuzzles.length - 1, Math.round(Math.random() * testPuzzles.length));
+            var index = Math.min(testPuzzles.length -1 , Math.round(Math.random() * testPuzzles.length));
             boardString = testPuzzles[index];
             break;
         default:
@@ -2742,142 +2753,142 @@ var getRandomBoard = (difficulty) => {
 }
 
 var deepcopyCell = (cell) => {
-    const cellcopy = JSON.parse(JSON.stringify(cell));
+    var cellcopy = JSON.parse(JSON.stringify(cell));
     return cellcopy;
 }
 
-const deepcopy = (board) => {
-    const copy = [];
-    for (let i = 0; i < board.length; i++) {
+var deepcopy = (board) => {
+    var copy = []
+    for(let i = 0; i < board.length; i++) {
         // Apparently that is the way to go?
-        const cellcopy = JSON.parse(JSON.stringify(board[i]));
+        var cellcopy = JSON.parse(JSON.stringify(board[i]));
         copy[i] = cellcopy;
     }
     return copy;
-};
+}
 
-const rotateBoard = (board, numRotations) => {
-    for (let i = 0; i < numRotations; i++) {
-        const copy = deepcopy(board);
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
+var rotateBoard = (board, numRotations) => {
+    for(let i = 0; i < numRotations; i++) {
+        var copy = deepcopy(board);
+        for(let r = 0; r < ROWS; r++) {
+            for(let c = 0; c < COLS; c++) {
                 // index magic was adapted from here: https://math.stackexchange.com/a/1676457/528931 (and here https://github.com/MitchelPaulin/sudoku-rs/blob/main/src/puzzle_transformer.rs)
                 board[c * 9 + 9 - r - 1] = copy[getBoardNum(r, c)]
             }
         }
     }
-};
+}
 
-const mirrorBoardHorizontally = (board) => {
-    const copy = deepcopy(board);
+var mirrorBoardHorizontally = (board) => {
+    var copy = deepcopy(board);
 
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
+    for(let r = 0; r < ROWS; r++) {
+        for(let c = 0; c < COLS; c++) {
             board[getBoardNum(r, c)] = copy[getBoardNum(r, COLS - 1 - c)];
         }
     }
-};
+}
 
-const mirrorBoardVertically = (board) => {
-    const copy = deepcopy(board);
+var mirrorBoardVertically = (board) => {
+    var copy = deepcopy(board);
 
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            board[getBoardNum(r, c)] = copy[getBoardNum(ROWS - 1 - r, c)];
+    for(let r = 0; r < ROWS; r++) {
+        for(let c = 0; c < COLS; c++) {
+            board[getBoardNum(r, c)] = copy[getBoardNum(ROWS -1 - r, c)];
         }
     }
-};
+}
 
-const permutateRowsGlobally = (board) => {
-    const permutation = getPermutationMapping(3, false);
+var permutateRowsGlobally = (board) => {
+    var permutation = getPermutationMapping(3, false);
 
-    const copy = deepcopy(board);
+    var copy = deepcopy(board);
 
-    for (let rb = 0; rb < 3; rb++) {
-        const correspondentRowBlock = permutation[rb];
-        for (let r = 0; r < 3; r++) {
-            for (let c = 0; c < COLS; c++) {
+    for(let rb = 0; rb < 3; rb++) {
+        var correspondentRowBlock = permutation[rb];
+        for(let r = 0; r < 3; r++) {
+            for(let c = 0; c < COLS; c++) {
                 board[getBoardNum(rb * 3 + r, c)] = copy[getBoardNum(correspondentRowBlock * 3 + r, c)];
             }
         }
     }
-};
+}
 
-const permutateRowsBlockwise = (board) => {
-    const permutationBlock1 = getPermutationMapping(3, false);
-    const permutationBlock2 = getPermutationMapping(3, false);
-    const permutationBlock3 = getPermutationMapping(3, false);
+var permutateRowsBlockwise = (board) => {
+    var permutationBlock1 = getPermutationMapping(3, false);
+    var permutationBlock2 = getPermutationMapping(3, false);
+    var permutationBlock3 = getPermutationMapping(3, false);
 
-    const copy = deepcopy(board);
+    var copy = deepcopy(board);
 
-    for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < COLS; c++) {
+    for(let r = 0; r < 3; r++) {
+        for(let c = 0; c < COLS; c++) {
             board[getBoardNum(permutationBlock1[r], c)] = copy[getBoardNum(r, c)];
             board[getBoardNum(permutationBlock2[r] + 3, c)] = copy[getBoardNum(r + 3, c)];
             board[getBoardNum(permutationBlock3[r] + 6, c)] = copy[getBoardNum(r + 6, c)];
         }
     }
-};
+}
 
-const permutateColumnsGlobally = (board) => {
-    const permutation = getPermutationMapping(3, false);
+var permutateColumnsGlobally = (board) => {
+    var permutation = getPermutationMapping(3, false);
 
-    const copy = deepcopy(board);
+    var copy = deepcopy(board);
 
-    for (let cb = 0; cb < 3; cb++) {
-        const correspondentColumnBlock = permutation[cb];
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < 3; c++) {
+    for(let cb = 0; cb < 3; cb++) {
+        var correspondentColumnBlock = permutation[cb];
+        for(let r = 0; r < ROWS; r++) {
+            for(let c = 0; c < 3; c++) {
                 board[getBoardNum(r, cb * 3 + c)] = copy[getBoardNum(r, correspondentColumnBlock * 3 + c)];
             }
         }
     }
-};
+}
 
-const permutateColumnsBlockwise = (board) => {
-    const permutationBlock1 = getPermutationMapping(3, false);
-    const permutationBlock2 = getPermutationMapping(3, false);
-    const permutationBlock3 = getPermutationMapping(3, false);
+var permutateColumnsBlockwise = (board) => {
+    var permutationBlock1 = getPermutationMapping(3, false);
+    var permutationBlock2 = getPermutationMapping(3, false);
+    var permutationBlock3 = getPermutationMapping(3, false);
 
-    const copy = deepcopy(board);
+    var copy = deepcopy(board);
 
-    for (let c = 0; c < 3; c++) {
-        for (let r = 0; r < ROWS; r++) {
+    for(let c = 0; c < 3; c++) {
+        for(let r = 0; r < ROWS; r++) {
             board[getBoardNum(r, permutationBlock1[c])] = copy[getBoardNum(r, c)];
             board[getBoardNum(r, permutationBlock2[c] + 3)] = copy[getBoardNum(r, c + 3)];
             board[getBoardNum(r, permutationBlock3[c] + 6)] = copy[getBoardNum(r, c + 6)];
         }
     }
-};
+}
 
-const permutateNumbers = (board) => {
-    const permutation = getPermutationMapping(ROWS + 1, true);
+var permutateNumbers = (board) => {
+    var permutation = getPermutationMapping(ROWS + 1, true);
 
-    const copy = deepcopy(board);
+    var copy = deepcopy(board);
 
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
+    for(let r = 0; r < ROWS; r++) {
+        for(let c = 0; c < COLS; c++) {
             board[getBoardNum(r, c)].number = permutation[copy[getBoardNum(r, c)].number];
         }
     }
-};
+}
 
 var getPermutationMapping = (size, includeFixedZero) => {
-    const mapping = [];
-    const index = includeFixedZero ? 1 : 0;
+    var mapping = [];
+    var index = includeFixedZero ? 1 : 0;
 
-    const numbers = [];
-    for (let n = index; n < size; n++) {
+    var numbers = []
+    for(let n = index; n < size; n++) {
         numbers[n - index] = n;
     }
 
-    for (let i = 0; i < size; i++) {
-        const mappedNumber = Math.round((Math.random() * (numbers.length - 1)));
-        const chosen = numbers.splice(mappedNumber, 1)[0];
+    for(let i = 0; i < size; i++) {
+        var mappedNumber = Math.round((Math.random() * (numbers.length - 1)));
+        var chosen = numbers.splice(mappedNumber, 1)[0];
         mapping[i] = chosen;
     }
 
-    if (includeFixedZero) {
+    if(includeFixedZero) {
         mapping.unshift(0);
     }
 
@@ -2893,65 +2904,65 @@ var getPermutationMapping = (size, includeFixedZero) => {
  */
 var generate = (board) => {
     // This has the potential for a lot (> 1e10 if somebody else's math is correct) of combinations, so you shouldn't really see any repeat or anything looking that familiar :)
-    const percentage = 0.5;
+    var percentage = 0.5;
 
     //logBoard(board);
 
-    const rotate = Math.random() > percentage;
-    if (rotate) {
-        const numRotations = Math.round(Math.random() * 3);
-        if (numRotations > 0) {
+    var rotate = Math.random() > percentage;
+    if(rotate) {
+        var numRotations = Math.round( Math.random() * 3);
+        if(numRotations > 0) {
             rotateBoard(board, numRotations);
             //log("rotated board " + numRotations + " times");
             //logBoard(board);
         }
     }
 
-    const mirrorHorizontally = Math.random() > percentage;
-    if (mirrorHorizontally) {
+    var mirrorHorizontally = Math.random() > percentage;
+    if(mirrorHorizontally) {
         mirrorBoardHorizontally(board);
         //log("mirrored horizontally");
         //logBoard(board);
     }
 
-    const mirrorVertically = Math.random() > percentage;
-    if (mirrorVertically) {
+    var mirrorVertically = Math.random() > percentage;
+    if(mirrorVertically) {
         mirrorBoardVertically(board);
         //log("mirrored vertically");
         //logBoard(board);
     }
 
-    const permutateRowsGlobal = Math.random() > percentage;
-    if (permutateRowsGlobal) {
+    var permutateRowsGlobal = Math.random() > percentage;
+    if(permutateRowsGlobal) {
         permutateRowsGlobally(board);
         //log("permutated rows globally");
         //logBoard(board);
     }
 
-    const permutateRowsBlock = Math.random() > percentage;
-    if (permutateRowsBlock) {
+    var permutateRowsBlock = Math.random() > percentage;
+    if(permutateRowsBlock) {
         permutateRowsBlockwise(board);
         //log("permutated rows blockwise");
         //logBoard(board);
     }
 
-    const permutateColumnsGlobal = Math.random() > percentage;
-    if (permutateColumnsGlobal) {
+    var permutateColumnsGlobal = Math.random() > percentage;
+    if(permutateColumnsGlobal) {
         permutateColumnsGlobally(board);
         //log("permutated columns globally");
         //logBoard(board);
     }
 
-    const permutateColumnsBlock = Math.random() > percentage;
-    if (permutateColumnsBlock) {
+    var permutateColumnsBlock = Math.random() > percentage;
+    if(permutateColumnsBlock) {
         permutateColumnsBlockwise(board);
         //log("permutated columns blockwise");
         //logBoard(board);
     }
 
 
-    const permutateNums = Math.random() > percentage;
-    if (permutateNums) {
+    var permutateNums = Math.random() > percentage;
+    if(permutateNums) {
         permutateNumbers(board);
         //log("permutated numbers");
         //logBoard(board);
@@ -2962,13 +2973,22 @@ var generate = (board) => {
 
 //#endregion
 
+//#region DEBUG
+var logObject = (object, prefix = "") => {
+    var output = '';
+    for (var property in object) {
+        output += property + ': ' + object[property]+'; ';
+    }
+    log(prefix + "object: " + output);
+}
+
 var logBoard = (board) => {
-    for (let r = 0; r < ROWS; r++) {
+    for(var r = 0; r < ROWS; r++){
         log("-------------------------------------");
 
-        const currentRowCells = []
-        for (let c = 0; c < COLS; c++) {
-            const cell = board[r * 9 + c];
+        currentRowCells = []
+        for(var c = 0; c < COLS; c++){
+            var cell = board[r * 9 + c];
             currentRowCells.push(cell.number < 1 ? ' ' : cell.number);
             currentRowCells.push('|');
         }
@@ -2977,5 +2997,5 @@ var logBoard = (board) => {
     }
 
     log("-------------------------------------");
-};
+}
 //#endregion
