@@ -3080,9 +3080,9 @@ var generatePuzzle = (difficulty) => {
     for(var i = 0; i < shuffledCompletedBoard.values.length; i++){
         vals[i] = shuffledCompletedBoard.values[i];
     }
-    var rUsed = new Array(9).fill(0);
-    var cUsed = new Array(9).fill(0);
-    var bUsed = new Array(9).fill(0);
+    var rUsed = new Array(9).fill(1);
+    var cUsed = new Array(9).fill(1);
+    var bUsed = new Array(9).fill(1);
 
     var positions = [];
     for (var i = 0; i < BOARD_SIZE; i++) positions.push(i);
@@ -3092,29 +3092,81 @@ var generatePuzzle = (difficulty) => {
     }
 
     var givens = BOARD_SIZE;
-    for (var pi = 0; pi < positions.length && givens > target; pi++) {
-        var idx = positions[pi];
-        var saved = vals[idx];
-        var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
-        var bit = 1 << saved;
+    let max_iterations = 5;
+    let iterations = 0;
+    let maxRemovals = 64;
+    log("Starting puzzle generation with " + givens + " givens");
+    while(givens > target){
+        iterations++;
+        //log("Iteration " + iterations);
+        //log("Givens: " + givens);
+        if(iterations > max_iterations){
+            //log("Max iterations reached, puzzle generation failed");
+            break;
+        }
+        
+        for (var pi = 0; pi < positions.length; pi++) {
+            if(givens <= target) break;
+            
+            let removals = givens - maxRemovals > target ? maxRemovals : givens - target;
+            if(removals + pi >= positions.length) removals = positions.length - pi;
+            log("Trying to removing " + removals + " values from board");
+            
+            let saved = new Array(removals);
+            let ids = new Array(removals);
+            let removed = 0;
+            let index = 0;
+            while(removed < removals && pi + index < positions.length){
+                let idx = positions[pi + index];
+                index++;
+                let val = vals[idx];
+                if(val === 0){
+                    continue;
+                }
+                ids[removed] = idx;
+                saved[removed] = vals[idx];
+                removed++;
+                var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
+                var bit = 1 << saved;
 
-        vals[idx] = 0;
-        rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
-
-        if (_countSolutions(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice(), 2) === 1) {
-            givens--;
-        } else {
-            vals[idx] = saved;
-            rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+                vals[idx] = 0;
+                rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
+            }
+            pi += index - 1;
+            log("Removed " + removed + " values from board");
+            //log("Removing " + saved.join(', ') + " from ids " + ids.join(', '));
+            
+            if (_solveBacktrack(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice())) {
+                log("Removal successful");
+                givens -= removed;
+            } else {
+                log("Removal failed");
+                for(let i = 0; i < removed; i++){
+                    let idx = ids[i];
+                    vals[idx] = saved[idx];
+                    var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
+                    var bit = 1 << saved[idx];
+                    rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+                }
+            }
+            log("Givens after removal try: " + givens);
         }
     }
+    
 
     log("Generated " + difficulty + " puzzle with " + givens + " givens (target: " + target + ")");
 
     var board = createEmptyBoard();
     for (var i = 0; i < BOARD_SIZE; i++) {
-        board.values[i] = vals[i];
-        board.given[i] = vals[i] > 0 ? 1 : 0;
+        var n = vals[i];
+        board.values[i] = n;
+        board.given[i] = n > 0 ? 1 : 0;
+        if (n > 0) {
+            var r = (i / 9) | 0, c = i % 9;
+            board.rowUsed[r] |= (1 << n);
+            board.colUsed[c] |= (1 << n);
+            board.boxUsed[boxIdx(r, c)] |= (1 << n);
+        }
     }
     recomputeConstraints(board);
     return board;
