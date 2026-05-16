@@ -104,8 +104,10 @@ var isPopupOpen = false;
 var gameGrid = null;
 var undoButton;
 var redoButton;
+var hintButton;
 var timerLabel;
 var bestTimeLabel;
+var hintLabel;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -1602,6 +1604,7 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                     stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
                     resetDifficulty(difficulty);
                     undoButton.isEnabled = false;
+                    hintButton.isEnabled = false;
 
                     gameGrid.FadeTo(0.5, 10);
                 }
@@ -1624,7 +1627,7 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
 }
 
 var createButtonsGrid = (difficulty) => {
-    let buttons = [null, null, null, null, null];
+    let buttons = [null, null, null, null, null, null];
 
     var buttonSize = getActionButtonSize();
     var fontSize = getFontSize(BUTTON);
@@ -1715,6 +1718,33 @@ var createButtonsGrid = (difficulty) => {
     redoButton.isEnabled = getStackForModeAndDifficulty(difficulty, REDO_MODE).length > 0;
     buttons[4] = redoButton;
 
+    hintButton = ui.createButton({
+        fontSize: fontSize,
+        widthRequest: buttonSize.Width,
+        heightRequest: buttonSize.Height,
+        row: 1,
+        column: 2,
+        text: "Hint",
+        onClicked: () => {
+            if (isFinished(difficulty)) return;
+
+            var hint = getHint(board);
+            if (hint === null) {
+                log("Hint: no solution found");
+                return;
+            }
+
+            var r = (hint.idx / 9) | 0, c = hint.idx % 9;
+            log("Hint: cell (" + r + "," + c + ") = " + hint.number);
+
+            var timer = getTimerForDifficulty(difficulty);
+            timer.hints++;
+            hintLabel.text = "Hints used: " + timer.hints;
+        }
+    });
+    hintButton.isEnabled = !isFinished(difficulty);
+    buttons[5] = hintButton;
+
     let buttonGrid = ui.createGrid({
         columnDefinitions: ["1*", "1*", "1*"],
         rowDefinitions: ["1*", "1*"],
@@ -1756,6 +1786,12 @@ var createPopupUI = (difficulty, board) => {
         margin: new Thickness(0, 3, 0, 5),
         fontSize: fontSize
     });
+    hintLabel = ui.createLatexLabel({
+        text: "Hints used: " + getTimerForDifficulty(difficulty).hints,
+        horizontalTextAlignment: TextAlignment.CENTER,
+        margin: new Thickness(0, 3, 0, 5),
+        fontSize: fontSize
+    });
 
     var numberButtonGrid = createNumberButtonsGrid(difficulty, board, stateLabel);
     var buttonGrid = createButtonsGrid(difficulty);
@@ -1768,6 +1804,7 @@ var createPopupUI = (difficulty, board) => {
                 timerLabel,
                 bestTimeLabel,
                 stateLabel,
+                hintLabel,
                 gameGrid,
                 numberButtonGrid,
                 buttonGrid
@@ -2606,6 +2643,57 @@ var checkForDuplicates = (board, fullBoard) => {
 
     return [correct, wrongCells];
 }
+
+// Shared backtracking engine with MRV heuristic. Mutates vals/rUsed/cUsed/bUsed in place.
+// Returns true if a solution was found.
+var _solveBacktrack = (vals, rUsed, cUsed, bUsed) => {
+    var bestIdx = -1, bestCount = 10;
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        if (vals[i] !== 0) continue;
+        var r = (i / 9) | 0, c = i % 9;
+        var cands = ~(rUsed[r] | cUsed[c] | bUsed[boxIdx(r, c)]) & 0x3FE;
+        if (!cands) return false;
+        var cnt = 0, tmp = cands; while (tmp) { cnt++; tmp &= tmp - 1; }
+        if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
+    }
+    if (bestIdx === -1) return true;
+
+    var r = (bestIdx / 9) | 0, c = bestIdx % 9, b = boxIdx(r, c);
+    var cands = ~(rUsed[r] | cUsed[c] | bUsed[b]) & 0x3FE;
+    while (cands) {
+        var bit = cands & -cands;
+        cands ^= bit;
+        var n = Math.log2(bit) | 0;
+        vals[bestIdx] = n;
+        rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+        if (_solveBacktrack(vals, rUsed, cUsed, bUsed)) return true;
+        vals[bestIdx] = 0;
+        rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
+    }
+    return false;
+};
+
+// Returns the value at position 0 of the solution, or null if no solution exists.
+var solveSudoku = (board) => {
+    var vals  = board.values.slice();
+    var rUsed = board.rowUsed.slice();
+    var cUsed = board.colUsed.slice();
+    var bUsed = board.boxUsed.slice();
+    return _solveBacktrack(vals, rUsed, cUsed, bUsed) ? vals[0] : null;
+};
+
+// Returns {idx, number} for the first empty cell's correct value, or null if unsolvable/complete.
+var getHint = (board) => {
+    var vals  = board.values.slice();
+    var rUsed = board.rowUsed.slice();
+    var cUsed = board.colUsed.slice();
+    var bUsed = board.boxUsed.slice();
+    if (!_solveBacktrack(vals, rUsed, cUsed, bUsed)) return null;
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        if (board.values[i] === 0) return { idx: i, number: vals[i] };
+    }
+    return null;
+};
 
 var boardFromString = (boardString) => {
     var board = createEmptyBoard();
