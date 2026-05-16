@@ -25,6 +25,7 @@ var version = 1;
 var currency;
 
 var easy, medium, hard, expert, omega, devilish;
+var autoEasy, autoMedium, autoHard, autoExpert, autoDevilish, autoImpossible;
 var difficulty;
 
 /**
@@ -40,13 +41,18 @@ var difficulty;
  * }
  */
 var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
+var autoEasyBoard, autoMediumBoard, autoHardBoard, autoExpertBoard, autoDevilishBoard, autoImpossibleBoard;
 var board;
 
 var easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
+var autoEasyUndoStack, autoMediumUndoStack, autoHardUndoStack, autoExpertUndoStack, autoDevilishUndoStack, autoImpossibleUndoStack;
 var easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
+var autoEasyRedoStack, autoMediumRedoStack, autoHardRedoStack, autoExpertRedoStack, autoDevilishRedoStack, autoImpossibleRedoStack;
 
 var easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer;
+var autoEasyTimer, autoMediumTimer, autoHardTimer, autoExpertTimer, autoDevilishTimer, autoImpossibleTimer;
 var easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer;
+var autoEasyBestTimer, autoMediumBestTimer, autoHardBestTimer, autoExpertBestTimer, autoDevilishBestTimer, autoImpossibleBestTimer;
 var currentStartTime;
 
 // intentionally almost completed board for testing purposes
@@ -66,6 +72,14 @@ const HARD = "Hard";
 const EXPERT = "Expert";
 const OMEGA = "Omega";
 const DEVILISH = "Devilish";
+const IMPOSSIBLE = "Impossible";
+
+const AUTO_EASY      = "AutoEasy";
+const AUTO_MEDIUM    = "AutoMedium";
+const AUTO_HARD      = "AutoHard";
+const AUTO_EXPERT    = "AutoExpert";
+const AUTO_DEVILISH  = "AutoDevilish";
+const AUTO_IMPOSSIBLE = "AutoImpossible";
 
 const REWARD_TEST = 1;
 const REWARD_EASY = 30;
@@ -74,6 +88,7 @@ const REWARD_HARD = 750;
 const REWARD_EXPERT = 2500;
 const REWARD_OMEGA = 5000;
 const REWARD_DEVILISH = 10000;
+const REWARD_IMPOSSIBLE = 50000;
 
 const ROWS = 9;
 const COLS = 9;
@@ -109,6 +124,8 @@ var timerLabel;
 var bestTimeLabel;
 var hintLabel;
 var stateLabel;
+
+let baseCompletedPuzzle = '594137286782496351136582974845679123329814567617253498273961845468325719951748632';
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -913,7 +930,7 @@ var init = () => {
             easy.level -= amount;
             if (!isPopupOpen) {
                 difficulty = EASY;
-                showSudokuPopup(EASY);
+                showSudokuPopup(EASY, false);
             }
 
         };
@@ -930,7 +947,7 @@ var init = () => {
             medium.level -= amount;
             if (!isPopupOpen) {
                 difficulty = MEDIUM;
-                showSudokuPopup(MEDIUM);
+                showSudokuPopup(MEDIUM, false);
             }
         };
     }
@@ -946,7 +963,7 @@ var init = () => {
             hard.level -= amount;
             if (!isPopupOpen) {
                 difficulty = HARD;
-                showSudokuPopup(HARD);
+                showSudokuPopup(HARD, false);
             }
         };
     }
@@ -962,7 +979,7 @@ var init = () => {
             expert.level -= amount;
             if (!isPopupOpen) {
                 difficulty = EXPERT;
-                showSudokuPopup(EXPERT);
+                showSudokuPopup(EXPERT, false);
             }
         };
     }
@@ -978,7 +995,7 @@ var init = () => {
             omega.level -= amount;
             if (!isPopupOpen) {
                 difficulty = OMEGA;
-                showSudokuPopup(OMEGA);
+                showSudokuPopup(OMEGA, false);
             }
         };
     }
@@ -994,7 +1011,7 @@ var init = () => {
             devilish.level -= amount;
             if (!isPopupOpen) {
                 difficulty = DEVILISH;
-                showSudokuPopup(DEVILISH);
+                showSudokuPopup(DEVILISH, false);
             }
         };
     }
@@ -1010,7 +1027,103 @@ var init = () => {
             test.level -= amount;
             if (!isPopupOpen) {
                 difficulty = TEST;
-                showSudokuPopup(TEST);
+                showSudokuPopup(TEST, false);
+            }
+        };
+    }
+
+    // auto easy
+    {
+        let getDesc = () => "Auto Easy (gain " + REWARD_EASY + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with easy difficulty";
+        autoEasy = theory.createUpgrade(7, currency, new FreeCost());
+        autoEasy.getDescription = (_) => getDesc();
+        autoEasy.getInfo = (amount) => getInfo();
+        autoEasy.bought = (amount) => {
+            autoEasy.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_EASY;
+                showSudokuPopup(EASY, true);
+            }
+        };
+    }
+
+    // auto medium
+    {
+        let getDesc = () => "Auto Medium (gain " + REWARD_MEDIUM + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with medium difficulty";
+        autoMedium = theory.createUpgrade(8, currency, new FreeCost());
+        autoMedium.getDescription = (_) => getDesc();
+        autoMedium.getInfo = (amount) => getInfo();
+        autoMedium.bought = (amount) => {
+            autoMedium.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_MEDIUM;
+                showSudokuPopup(MEDIUM, true);
+            }
+        };
+    }
+
+    // auto hard
+    {
+        let getDesc = () => "Auto Hard (gain " + REWARD_HARD + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with hard difficulty";
+        autoHard = theory.createUpgrade(9, currency, new FreeCost());
+        autoHard.getDescription = (_) => getDesc();
+        autoHard.getInfo = (amount) => getInfo();
+        autoHard.bought = (amount) => {
+            autoHard.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_HARD;
+                showSudokuPopup(HARD, true);
+            }
+        };
+    }
+
+    // auto expert
+    {
+        let getDesc = () => "Auto Expert (gain " + REWARD_EXPERT + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with expert difficulty";
+        autoExpert = theory.createUpgrade(10, currency, new FreeCost());
+        autoExpert.getDescription = (_) => getDesc();
+        autoExpert.getInfo = (amount) => getInfo();
+        autoExpert.bought = (amount) => {
+            autoExpert.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_EXPERT;
+                showSudokuPopup(EXPERT, true);
+            }
+        };
+    }
+
+    // auto devilish
+    {
+        let getDesc = () => "Auto Devilish (gain " + REWARD_DEVILISH + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with devilish difficulty";
+        autoDevilish = theory.createUpgrade(11, currency, new FreeCost());
+        autoDevilish.getDescription = (_) => getDesc();
+        autoDevilish.getInfo = (amount) => getInfo();
+        autoDevilish.bought = (amount) => {
+            autoDevilish.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_DEVILISH;
+                showSudokuPopup(DEVILISH, true);
+            }
+        };
+    }
+
+    // auto impossible
+    {
+        let getDesc = () => "Auto Impossible (gain " + REWARD_IMPOSSIBLE + " ⋆)";
+        let getInfo = () => "Open a generated sudoku with impossible difficulty";
+        autoImpossible = theory.createUpgrade(12, currency, new FreeCost());
+        autoImpossible.getDescription = (_) => getDesc();
+        autoImpossible.getInfo = (amount) => getInfo();
+        autoImpossible.bought = (amount) => {
+            autoImpossible.level -= amount;
+            if (!isPopupOpen) {
+                difficulty = AUTO_IMPOSSIBLE;
+                showSudokuPopup(IMPOSSIBLE, true);
             }
         };
     }
@@ -1045,11 +1158,17 @@ var getInternalState = () => {
         easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack, testUndoStack,
         easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack, testRedoStack,
         easyTimer, mediumTimer, hardTimer, expertTimer, omegaTimer, devilishTimer, testTimer,
-        easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer, testBestTimer];
+        easyBestTimer, mediumBestTimer, hardBestTimer, expertBestTimer, omegaBestTimer, devilishBestTimer, testBestTimer,
+        autoEasyBoard, autoMediumBoard, autoHardBoard, autoExpertBoard, autoDevilishBoard, autoImpossibleBoard,
+        autoEasyUndoStack, autoMediumUndoStack, autoHardUndoStack, autoExpertUndoStack, autoDevilishUndoStack, autoImpossibleUndoStack,
+        autoEasyRedoStack, autoMediumRedoStack, autoHardRedoStack, autoExpertRedoStack, autoDevilishRedoStack, autoImpossibleRedoStack,
+        autoEasyTimer, autoMediumTimer, autoHardTimer, autoExpertTimer, autoDevilishTimer, autoImpossibleTimer,
+        autoEasyBestTimer, autoMediumBestTimer, autoHardBestTimer, autoExpertBestTimer, autoDevilishBestTimer, autoImpossibleBestTimer];
     var saveState = JSON.stringify(saveArray);
 
-    //log(saveState);
-
+    // log(saveState);
+    log("Saved");
+    
     return saveState;
 }
 
@@ -1097,6 +1216,43 @@ var setInternalState = (state) => {
     omegaBestTimer   = saveState[32];
     devilishBestTimer= saveState[33];
     testBestTimer    = saveState[34];
+    
+    autoEasyBoard       = saveState[35];
+    autoMediumBoard     = saveState[36];
+    autoHardBoard       = saveState[37];
+    autoExpertBoard     = saveState[38];
+    autoDevilishBoard   = saveState[39];
+    autoImpossibleBoard = saveState[40];
+
+    autoEasyUndoStack       = saveState[41];
+    autoMediumUndoStack     = saveState[42];
+    autoHardUndoStack       = saveState[43];
+    autoExpertUndoStack     = saveState[44];
+    autoDevilishUndoStack   = saveState[45];
+    autoImpossibleUndoStack = saveState[46];
+
+    autoEasyRedoStack       = saveState[47];
+    autoMediumRedoStack     = saveState[48];
+    autoHardRedoStack       = saveState[49];
+    autoExpertRedoStack     = saveState[50];
+    autoDevilishRedoStack   = saveState[51];
+    autoImpossibleRedoStack = saveState[52];
+
+    autoEasyTimer       = saveState[53];
+    autoMediumTimer     = saveState[54];
+    autoHardTimer       = saveState[55];
+    autoExpertTimer     = saveState[56];
+    autoDevilishTimer   = saveState[57];
+    autoImpossibleTimer = saveState[58];
+
+    autoEasyBestTimer       = saveState[59];
+    autoMediumBestTimer     = saveState[60];
+    autoHardBestTimer       = saveState[61];
+    autoExpertBestTimer     = saveState[62];
+    autoDevilishBestTimer   = saveState[63];
+    autoImpossibleBestTimer = saveState[64];
+    
+    log("Restored");
 }
 
 var getPrimaryEquation = () => {
@@ -1132,6 +1288,24 @@ var rewardForDifficulty = (difficulty) => {
             break;
         case TEST:
             reward = REWARD_TEST;
+            break;
+        case AUTO_EASY:
+            reward = REWARD_EASY;
+            break;
+        case AUTO_MEDIUM:
+            reward = REWARD_MEDIUM;
+            break;
+        case AUTO_HARD:
+            reward = REWARD_HARD;
+            break;
+        case AUTO_EXPERT:
+            reward = REWARD_EXPERT;
+            break;
+        case AUTO_DEVILISH:
+            reward = REWARD_DEVILISH;
+            break;
+        case AUTO_IMPOSSIBLE:
+            reward = REWARD_IMPOSSIBLE;
             break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
@@ -1169,6 +1343,24 @@ var resetDifficulty = (difficulty) => {
         case TEST:
             testBoard = null;
             break;
+        case AUTO_EASY:
+            autoEasyBoard = null;
+            break;
+        case AUTO_MEDIUM:
+            autoMediumBoard = null;
+            break;
+        case AUTO_HARD:
+            autoHardBoard = null;
+            break;
+        case AUTO_EXPERT:
+            autoExpertBoard = null;
+            break;
+        case AUTO_DEVILISH:
+            autoDevilishBoard = null;
+            break;
+        case AUTO_IMPOSSIBLE:
+            autoImpossibleBoard = null;
+            break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -1190,6 +1382,18 @@ var isFinished = (difficulty) => {
             return devilishBoard == null;
         case TEST:
             return testBoard == null;
+        case AUTO_EASY:
+            return autoEasyBoard == null;
+        case AUTO_MEDIUM:
+            return autoMediumBoard == null;
+        case AUTO_HARD:
+            return autoHardBoard == null;
+        case AUTO_EXPERT:
+            return autoExpertBoard == null;
+        case AUTO_DEVILISH:
+            return autoDevilishBoard == null;
+        case AUTO_IMPOSSIBLE:
+            return autoImpossibleBoard == null;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -1907,12 +2111,13 @@ var textForMode = (mode) => {
 //#endregion
 
 //#region UI Sudoku Popup
-var showSudokuPopup = (difficulty) => {
+var showSudokuPopup = (difficulty, auto = false) => {
+    var key = auto ? "Auto" + difficulty : difficulty;
     selectedSquare = null;
     mode = NORMAL_MODE;
-    board = getBoard(difficulty)
+    board = getBoard(key);
 
-    var popup = createPopupUI(difficulty, board);
+    var popup = createPopupUI(key, board);
 
     popup.show();
 }
@@ -1964,6 +2169,24 @@ var getBoard = (difficulty) => {
                 testBoard = generate(randomBoard);
             }
             return testBoard;
+        case AUTO_EASY:
+            if (autoEasyBoard == null) autoEasyBoard = generatePuzzle(EASY);
+            return autoEasyBoard;
+        case AUTO_MEDIUM:
+            if (autoMediumBoard == null) autoMediumBoard = generatePuzzle(MEDIUM);
+            return autoMediumBoard;
+        case AUTO_HARD:
+            if (autoHardBoard == null) autoHardBoard = generatePuzzle(HARD);
+            return autoHardBoard;
+        case AUTO_EXPERT:
+            if (autoExpertBoard == null) autoExpertBoard = generatePuzzle(EXPERT);
+            return autoExpertBoard;
+        case AUTO_DEVILISH:
+            if (autoDevilishBoard == null) autoDevilishBoard = generatePuzzle(DEVILISH);
+            return autoDevilishBoard;
+        case AUTO_IMPOSSIBLE:
+            if (autoImpossibleBoard == null) autoImpossibleBoard = generatePuzzle(IMPOSSIBLE);
+            return autoImpossibleBoard;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2228,6 +2451,36 @@ var getStackForModeAndDifficulty = (difficulty, operationMode) => {
                 throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
             }
             break;
+        case AUTO_EASY:
+            if(operationMode == UNDO_MODE){ if(autoEasyUndoStack == null) autoEasyUndoStack = []; difficultyStack = autoEasyUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoEasyRedoStack == null) autoEasyRedoStack = []; difficultyStack = autoEasyRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
+        case AUTO_MEDIUM:
+            if(operationMode == UNDO_MODE){ if(autoMediumUndoStack == null) autoMediumUndoStack = []; difficultyStack = autoMediumUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoMediumRedoStack == null) autoMediumRedoStack = []; difficultyStack = autoMediumRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
+        case AUTO_HARD:
+            if(operationMode == UNDO_MODE){ if(autoHardUndoStack == null) autoHardUndoStack = []; difficultyStack = autoHardUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoHardRedoStack == null) autoHardRedoStack = []; difficultyStack = autoHardRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
+        case AUTO_EXPERT:
+            if(operationMode == UNDO_MODE){ if(autoExpertUndoStack == null) autoExpertUndoStack = []; difficultyStack = autoExpertUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoExpertRedoStack == null) autoExpertRedoStack = []; difficultyStack = autoExpertRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
+        case AUTO_DEVILISH:
+            if(operationMode == UNDO_MODE){ if(autoDevilishUndoStack == null) autoDevilishUndoStack = []; difficultyStack = autoDevilishUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoDevilishRedoStack == null) autoDevilishRedoStack = []; difficultyStack = autoDevilishRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
+        case AUTO_IMPOSSIBLE:
+            if(operationMode == UNDO_MODE){ if(autoImpossibleUndoStack == null) autoImpossibleUndoStack = []; difficultyStack = autoImpossibleUndoStack; }
+            else if(operationMode == REDO_MODE){ if(autoImpossibleRedoStack == null) autoImpossibleRedoStack = []; difficultyStack = autoImpossibleRedoStack; }
+            else throw new Error("Unrecognized operationMode " + operationMode + "; cannot proceed");
+            break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2265,6 +2518,12 @@ var resetUndoRedoStacks = (difficulty) => {
             testUndoStack = [];
             testRedoStack = [];
             break;
+        case AUTO_EASY:      autoEasyUndoStack = [];      autoEasyRedoStack = [];      break;
+        case AUTO_MEDIUM:    autoMediumUndoStack = [];    autoMediumRedoStack = [];    break;
+        case AUTO_HARD:      autoHardUndoStack = [];      autoHardRedoStack = [];      break;
+        case AUTO_EXPERT:    autoExpertUndoStack = [];    autoExpertRedoStack = [];    break;
+        case AUTO_DEVILISH:  autoDevilishUndoStack = [];  autoDevilishRedoStack = [];  break;
+        case AUTO_IMPOSSIBLE:autoImpossibleUndoStack = [];autoImpossibleRedoStack = [];break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2390,6 +2649,12 @@ var getBestTimerForDifficulty = (difficulty) => {
                 };
             }
             return testBestTimer;
+        case AUTO_EASY:      if(!autoEasyBestTimer)       autoEasyBestTimer       = {time:-1,hints:-1}; return autoEasyBestTimer;
+        case AUTO_MEDIUM:    if(!autoMediumBestTimer)     autoMediumBestTimer     = {time:-1,hints:-1}; return autoMediumBestTimer;
+        case AUTO_HARD:      if(!autoHardBestTimer)       autoHardBestTimer       = {time:-1,hints:-1}; return autoHardBestTimer;
+        case AUTO_EXPERT:    if(!autoExpertBestTimer)     autoExpertBestTimer     = {time:-1,hints:-1}; return autoExpertBestTimer;
+        case AUTO_DEVILISH:  if(!autoDevilishBestTimer)   autoDevilishBestTimer   = {time:-1,hints:-1}; return autoDevilishBestTimer;
+        case AUTO_IMPOSSIBLE:if(!autoImpossibleBestTimer) autoImpossibleBestTimer = {time:-1,hints:-1}; return autoImpossibleBestTimer;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2454,6 +2719,12 @@ var getTimerForDifficulty = (difficulty) => {
                 };
             }
             return testTimer;
+        case AUTO_EASY:      if(!autoEasyTimer)       autoEasyTimer       = {time:0,hints:0}; return autoEasyTimer;
+        case AUTO_MEDIUM:    if(!autoMediumTimer)     autoMediumTimer     = {time:0,hints:0}; return autoMediumTimer;
+        case AUTO_HARD:      if(!autoHardTimer)       autoHardTimer       = {time:0,hints:0}; return autoHardTimer;
+        case AUTO_EXPERT:    if(!autoExpertTimer)     autoExpertTimer     = {time:0,hints:0}; return autoExpertTimer;
+        case AUTO_DEVILISH:  if(!autoDevilishTimer)   autoDevilishTimer   = {time:0,hints:0}; return autoDevilishTimer;
+        case AUTO_IMPOSSIBLE:if(!autoImpossibleTimer) autoImpossibleTimer = {time:0,hints:0}; return autoImpossibleTimer;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2492,6 +2763,12 @@ var resetTimer = (difficulty) => {
             testTimer.time = 0;
             testTimer.hints = 0;
             break;
+        case AUTO_EASY:       autoEasyTimer.time = 0;       autoEasyTimer.hints = 0;       break;
+        case AUTO_MEDIUM:     autoMediumTimer.time = 0;     autoMediumTimer.hints = 0;     break;
+        case AUTO_HARD:       autoHardTimer.time = 0;       autoHardTimer.hints = 0;       break;
+        case AUTO_EXPERT:     autoExpertTimer.time = 0;     autoExpertTimer.hints = 0;     break;
+        case AUTO_DEVILISH:   autoDevilishTimer.time = 0;   autoDevilishTimer.hints = 0;   break;
+        case AUTO_IMPOSSIBLE: autoImpossibleTimer.time = 0; autoImpossibleTimer.hints = 0; break;
         default:
             throw new Error("Unrecognized difficulty " + difficulty + "; cannot proceed");
     }
@@ -2751,6 +3028,96 @@ var getHint = (board) => {
         if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
     }
     return bestIdx === -1 ? null : { idx: bestIdx, number: vals[bestIdx] };
+};
+
+// Counts the number of solutions up to limit, stopping early once limit is reached.
+var _countSolutions = (vals, rUsed, cUsed, bUsed, limit) => {
+    var bestIdx = -1, bestCount = 10;
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        if (vals[i] !== 0) continue;
+        var r = (i / 9) | 0, c = i % 9;
+        var cands = ~(rUsed[r] | cUsed[c] | bUsed[boxIdx(r, c)]) & 0x3FE;
+        if (!cands) return 0;
+        var cnt = 0, tmp = cands; while (tmp) { cnt++; tmp &= tmp - 1; }
+        if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
+    }
+    if (bestIdx === -1) return 1;
+    var r = (bestIdx / 9) | 0, c = bestIdx % 9, b = boxIdx(r, c);
+    var cands = ~(rUsed[r] | cUsed[c] | bUsed[b]) & 0x3FE;
+    var count = 0;
+    while (cands && count < limit) {
+        var bit = cands & -cands; cands ^= bit;
+        var n = Math.log2(bit) | 0;
+        vals[bestIdx] = n;
+        rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+        count += _countSolutions(vals, rUsed, cUsed, bUsed, limit - count);
+        vals[bestIdx] = 0;
+        rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
+    }
+    return count;
+};
+
+const DIFFICULTY_GIVEN_RANGES = {
+    [EASY]:       { min: 43, max: 47 },
+    [MEDIUM]:     { min: 38, max: 42 },
+    [HARD]:       { min: 33, max: 37 },
+    [EXPERT]:     { min: 28, max: 32 },
+    [DEVILISH]:   { min: 23, max: 27 },
+    [IMPOSSIBLE]: { min: 17, max: 22 }
+};
+
+// Generates a board with a unique solution at the given difficulty.
+// Starts from a random complete board and removes cells one by one,
+// skipping any removal that would create a second solution.
+var generatePuzzle = (difficulty) => {
+    var range = DIFFICULTY_GIVEN_RANGES[difficulty];
+    var target = range.min + ((Math.random() * (range.max - range.min + 1)) | 0);
+    log("Generating puzzle with " + target + " givens");
+
+    let completedBoard = boardFromString(baseCompletedPuzzle);
+    let shuffledCompletedBoard = generate(completedBoard);
+    var vals = new Array(BOARD_SIZE).fill(0);
+    for(var i = 0; i < shuffledCompletedBoard.values.length; i++){
+        vals[i] = shuffledCompletedBoard.values[i];
+    }
+    var rUsed = new Array(9).fill(0);
+    var cUsed = new Array(9).fill(0);
+    var bUsed = new Array(9).fill(0);
+
+    var positions = [];
+    for (var i = 0; i < BOARD_SIZE; i++) positions.push(i);
+    for (var i = positions.length - 1; i > 0; i--) {
+        var j = (Math.random() * (i + 1)) | 0;
+        var t = positions[i]; positions[i] = positions[j]; positions[j] = t;
+    }
+
+    var givens = BOARD_SIZE;
+    for (var pi = 0; pi < positions.length && givens > target; pi++) {
+        var idx = positions[pi];
+        var saved = vals[idx];
+        var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
+        var bit = 1 << saved;
+
+        vals[idx] = 0;
+        rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
+
+        if (_countSolutions(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice(), 2) === 1) {
+            givens--;
+        } else {
+            vals[idx] = saved;
+            rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+        }
+    }
+
+    log("Generated " + difficulty + " puzzle with " + givens + " givens (target: " + target + ")");
+
+    var board = createEmptyBoard();
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        board.values[i] = vals[i];
+        board.given[i] = vals[i] > 0 ? 1 : 0;
+    }
+    recomputeConstraints(board);
+    return board;
 };
 
 var boardFromString = (boardString) => {
