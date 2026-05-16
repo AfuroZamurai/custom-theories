@@ -3,15 +3,15 @@ This code includes region comments to collapse code sections in VS Code via the 
 */
 
 //#region Imports
-import { FreeCost } from "./api/Costs";
-import { Localization } from "./api/Localization";
-import { theory } from "./api/Theory";
-import { TextAlignment } from "./api/ui/properties/TextAlignment";
-import { Thickness } from "./api/ui/properties/Thickness";
-import { Color } from "./api/ui/properties/Color";
-import { Theme } from "./api/Settings";
-import { LayoutOptions } from "./api/ui/properties/LayoutOptions";
-import { ui } from "./api/ui/UI";
+import {FreeCost} from "./api/Costs";
+import {Localization} from "./api/Localization";
+import {theory} from "./api/Theory";
+import {TextAlignment} from "./api/ui/properties/TextAlignment";
+import {Thickness} from "./api/ui/properties/Thickness";
+import {Color} from "./api/ui/properties/Color";
+import {Theme} from "./api/Settings";
+import {LayoutOptions} from "./api/ui/properties/LayoutOptions";
+import {ui} from "./api/ui/UI";
 import {log} from "../../TheorySDK.Win.1.4.41/api/Utils";
 //#endregion
 
@@ -108,6 +108,7 @@ var hintButton;
 var timerLabel;
 var bestTimeLabel;
 var hintLabel;
+var stateLabel;
 
 /* Puzzle difficulty for now is defined by the number of givens.
 Easy = 47
@@ -1267,6 +1268,17 @@ var getSelectedBorderColor = () => {
     }
 }
 
+var getHintBackgroundColor = () => {
+    switch(game.settings.theme) {
+        case Theme.STANDARD:
+            return Color.fromRgb(0.85, 0.75, 0.2);
+        case Theme.DARK:
+            return Color.fromRgb(0.7, 0.6, 0.0);
+        case Theme.LIGHT:
+            return Color.fromRgb(1.0, 0.95, 0.4);
+    }
+}
+
 var markInvalidCells = (wrongCells) => {
     for (var wrongCell of wrongCells) {
         var row = wrongCell[0], column = wrongCell[1];
@@ -1727,19 +1739,53 @@ var createButtonsGrid = (difficulty) => {
         text: "Hint",
         onClicked: () => {
             if (isFinished(difficulty)) return;
-
-            var hint = getHint(board);
-            if (hint === null) {
-                log("Hint: no solution found");
+            var checkResult = checkBoard(board);
+            if(checkResult[1].size > 0) {
+                stateLabel.text = "No solution found!";
                 return;
             }
 
-            var r = (hint.idx / 9) | 0, c = hint.idx % 9;
-            log("Hint: cell (" + r + "," + c + ") = " + hint.number);
+            var hint = getHint(board);
+            if (hint === null) {
+                stateLabel.text = "No solution found!";
+                return;
+            }
+
+            if (currentStartTime == null) {
+                currentStartTime = Date.now();
+            }
 
             var timer = getTimerForDifficulty(difficulty);
             timer.hints++;
             hintLabel.text = "Hints used: " + timer.hints;
+
+            addToUndoStack(difficulty, board, hint.idx);
+            resetRedoStack(difficulty);
+
+            var hintCell = gameGrid.children[hint.idx];
+            setNormalNumber(hint.number, board, hint.idx, hintCell.content);
+
+            resetBackgroundColors();
+
+            var checkResult = checkBoard(board);
+            var fullBoard = hasAllNumbers(board);
+            if (checkResult[0] && fullBoard) {
+                timer.time = getElapsedTime(timer);
+                UpdateTimerIfBetter(difficulty);
+                log("Won " + difficulty + " in " + TimerAsString(timer));
+                var stars = rewardForDifficulty(difficulty);
+                increaseCurrency(stars);
+                stateLabel.text = "Congratulations! You won " + stars + " stars as a reward.";
+                resetDifficulty(difficulty);
+                undoButton.isEnabled = false;
+                hintButton.isEnabled = false;
+                gameGrid.FadeTo(0.5, 10);
+            } else {
+                if (fullBoard)
+                    stateLabel.text = "Solution is incorrect!";
+                markInvalidCells(checkResult[1]);
+                hintCell.backgroundColor = getHintBackgroundColor();
+            }
         }
     });
     hintButton.isEnabled = !isFinished(difficulty);
@@ -1780,7 +1826,7 @@ var createPopupUI = (difficulty, board) => {
         margin: new Thickness(0, 3, 0, 5),
         fontSize: fontSize
     });
-    var stateLabel = ui.createLatexLabel({
+    stateLabel = ui.createLatexLabel({
         text: "Solve for " + rewardForDifficulty(difficulty) + " stars",
         horizontalTextAlignment: TextAlignment.CENTER,
         margin: new Thickness(0, 3, 0, 5),
@@ -2682,17 +2728,23 @@ var solveSudoku = (board) => {
     return _solveBacktrack(vals, rUsed, cUsed, bUsed) ? vals[0] : null;
 };
 
-// Returns {idx, number} for the first empty cell's correct value, or null if unsolvable/complete.
+// Returns {idx, number} for the MRV cell (fewest candidates), or null if unsolvable/complete.
 var getHint = (board) => {
     var vals  = board.values.slice();
     var rUsed = board.rowUsed.slice();
     var cUsed = board.colUsed.slice();
     var bUsed = board.boxUsed.slice();
     if (!_solveBacktrack(vals, rUsed, cUsed, bUsed)) return null;
+    var bestIdx = -1, bestCount = 10;
     for (var i = 0; i < BOARD_SIZE; i++) {
-        if (board.values[i] === 0) return { idx: i, number: vals[i] };
+        if (board.values[i] !== 0) continue;
+        var r = (i / 9) | 0, c = i % 9;
+        var cands = ~(board.rowUsed[r] | board.colUsed[c] | board.boxUsed[boxIdx(r, c)]) & 0x3FE;
+        var cnt = 0, tmp = cands;
+        while (tmp) { cnt++; tmp &= tmp - 1; }
+        if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
     }
-    return null;
+    return bestIdx === -1 ? null : { idx: bestIdx, number: vals[bestIdx] };
 };
 
 var boardFromString = (boardString) => {
