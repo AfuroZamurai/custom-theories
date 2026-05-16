@@ -1974,6 +1974,10 @@ var createButtonsGrid = (difficulty) => {
             var checkResult = checkBoard(board);
             var fullBoard = hasAllNumbers(board);
             if (checkResult[0] && fullBoard) {
+                log("v: " + board.values.join(""));
+                log("ru: " + board.rowUsed.join(""))
+                log("cu: " + board.colUsed.join(""))
+                log("bu: " + board.boxUsed.join(""))
                 timer.time = getElapsedTime(timer);
                 UpdateTimerIfBetter(difficulty);
                 log("Won " + difficulty + " in " + TimerAsString(timer));
@@ -3002,13 +3006,76 @@ var _solveBacktrack = (vals, rUsed, cUsed, bUsed) => {
     return false;
 };
 
-// Returns the value at position 0 of the solution, or null if no solution exists.
-var solveSudoku = (board) => {
-    var vals  = board.values.slice();
-    var rUsed = board.rowUsed.slice();
-    var cUsed = board.colUsed.slice();
-    var bUsed = board.boxUsed.slice();
-    return _solveBacktrack(vals, rUsed, cUsed, bUsed) ? vals[0] : null;
+var _solveIterative = (vals, rUsed, cUsed, bUsed) => {
+    let stack = [];
+    let hintId = -1;
+    let iteration = 1;
+    
+    log("vals: " + vals.join(""))
+    log("rUsed: " + rUsed.join(""))
+    log("cUsed: " + cUsed.join(""))
+    log("bUsed: " + bUsed.join(""))
+
+    while (true) {
+        log("Iteration " + iteration);
+        iteration++;
+         if(iteration > 81) {
+             log("Too many iterations, aborting");
+             return  -1;
+         }
+        
+        var bestIdx = -1, bestCount = 10;
+        for (var i = 0; i < BOARD_SIZE; i++) {
+            if (vals[i] !== 0) continue;
+            var r = (i / 9) | 0, c = i % 9;
+            var cands = ~(rUsed[r] | cUsed[c] | bUsed[boxIdx(r, c)]) & 0x3FE;
+
+            if (!cands) {
+                bestCount = -1;
+                bestIdx = i;
+                break;
+            }
+
+            var cnt = 0, tmp = cands; while (tmp) { cnt++; tmp &= tmp - 1; }
+            if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (hintId === -1) hintId = i; if (cnt === 1) break; }
+        }
+
+        if (bestIdx === -1) return hintId;
+        
+        if (bestCount === -1) {
+            if (stack.length === 0) return -1;
+            
+            let { idx, r, c, b, bit, remaining } = stack.pop();
+            vals[idx] = 0;
+            rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
+            
+            if (remaining !== 0) {
+                let nextBit = remaining & -remaining;
+                let nextRemaining = remaining ^ nextBit;
+                
+                stack.push({ idx, r, c, b, bit: nextBit, remaining: nextRemaining });
+
+                let n = Math.log2(nextBit) | 0;
+                vals[idx] = n;
+                rUsed[r] |= nextBit; cUsed[c] |= nextBit; bUsed[b] |= nextBit;
+            }
+
+            continue;
+        }
+
+        // MRV-Feld gefunden: Ersten Kandidaten probieren
+        var r = (bestIdx / 9) | 0, c = bestIdx % 9, b = boxIdx(r, c);
+        var cands = ~(rUsed[r] | cUsed[c] | bUsed[b]) & 0x3FE;
+
+        var bit = cands & -cands;
+        var remaining = cands ^ bit;
+
+        stack.push({ idx: bestIdx, r, c, b, bit, remaining });
+
+        var n = Math.log2(bit) | 0;
+        vals[bestIdx] = n;
+        rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
+    }
 };
 
 // Returns {idx, number} for the MRV cell (fewest candidates), or null if unsolvable/complete.
@@ -3017,44 +3084,10 @@ var getHint = (board) => {
     var rUsed = board.rowUsed.slice();
     var cUsed = board.colUsed.slice();
     var bUsed = board.boxUsed.slice();
-    if (!_solveBacktrack(vals, rUsed, cUsed, bUsed)) return null;
-    var bestIdx = -1, bestCount = 10;
-    for (var i = 0; i < BOARD_SIZE; i++) {
-        if (board.values[i] !== 0) continue;
-        var r = (i / 9) | 0, c = i % 9;
-        var cands = ~(board.rowUsed[r] | board.colUsed[c] | board.boxUsed[boxIdx(r, c)]) & 0x3FE;
-        var cnt = 0, tmp = cands;
-        while (tmp) { cnt++; tmp &= tmp - 1; }
-        if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
-    }
-    return bestIdx === -1 ? null : { idx: bestIdx, number: vals[bestIdx] };
-};
-
-// Counts the number of solutions up to limit, stopping early once limit is reached.
-var _countSolutions = (vals, rUsed, cUsed, bUsed, limit) => {
-    var bestIdx = -1, bestCount = 10;
-    for (var i = 0; i < BOARD_SIZE; i++) {
-        if (vals[i] !== 0) continue;
-        var r = (i / 9) | 0, c = i % 9;
-        var cands = ~(rUsed[r] | cUsed[c] | bUsed[boxIdx(r, c)]) & 0x3FE;
-        if (!cands) return 0;
-        var cnt = 0, tmp = cands; while (tmp) { cnt++; tmp &= tmp - 1; }
-        if (cnt < bestCount) { bestCount = cnt; bestIdx = i; if (cnt === 1) break; }
-    }
-    if (bestIdx === -1) return 1;
-    var r = (bestIdx / 9) | 0, c = bestIdx % 9, b = boxIdx(r, c);
-    var cands = ~(rUsed[r] | cUsed[c] | bUsed[b]) & 0x3FE;
-    var count = 0;
-    while (cands && count < limit) {
-        var bit = cands & -cands; cands ^= bit;
-        var n = Math.log2(bit) | 0;
-        vals[bestIdx] = n;
-        rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
-        count += _countSolutions(vals, rUsed, cUsed, bUsed, limit - count);
-        vals[bestIdx] = 0;
-        rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
-    }
-    return count;
+    let bestIdx = _solveIterative(vals, rUsed, cUsed, bUsed);
+    log("Hint: " + bestIdx);
+    if (bestIdx === -1) return null;
+    return { idx: bestIdx, number: vals[bestIdx] };
 };
 
 const DIFFICULTY_GIVEN_RANGES = {
@@ -3136,7 +3169,7 @@ var generatePuzzle = (difficulty) => {
             log("Removed " + removed + " values from board");
             //log("Removing " + saved.join(', ') + " from ids " + ids.join(', '));
             
-            if (_solveBacktrack(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice())) {
+            if (_solveIterative(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice()) > -1) {
                 log("Removal successful");
                 givens -= removed;
             } else {
@@ -3155,20 +3188,22 @@ var generatePuzzle = (difficulty) => {
     
 
     log("Generated " + difficulty + " puzzle with " + givens + " givens (target: " + target + ")");
+    log("vals: " + vals.join(""))
+    log("rUsed: " + rUsed.join(""))
+    log("cUsed: " + cUsed.join(""))
+    log("bUsed: " + bUsed.join(""))
 
     var board = createEmptyBoard();
     for (var i = 0; i < BOARD_SIZE; i++) {
         var n = vals[i];
         board.values[i] = n;
         board.given[i] = n > 0 ? 1 : 0;
-        if (n > 0) {
-            var r = (i / 9) | 0, c = i % 9;
-            board.rowUsed[r] |= (1 << n);
-            board.colUsed[c] |= (1 << n);
-            board.boxUsed[boxIdx(r, c)] |= (1 << n);
-        }
     }
     recomputeConstraints(board);
+    log("vals: " + vals.join(""))
+    log("rowUsed: " + board.rowUsed.join(""))
+    log("colUsed: " + board.colUsed.join(""))
+    log("boxUsed: " + board.boxUsed.join(""))
     return board;
 };
 
@@ -3179,13 +3214,8 @@ var boardFromString = (boardString) => {
         var n = parseInt(boardString.charAt(i), 10);
         board.values[i] = n;
         board.given[i] = n > 0 ? 1 : 0;
-        if (n > 0) {
-            var r = (i / 9) | 0, c = i % 9;
-            board.rowUsed[r] |= (1 << n);
-            board.colUsed[c] |= (1 << n);
-            board.boxUsed[boxIdx(r, c)] |= (1 << n);
-        }
     }
+    recomputeConstraints(board);
     return board;
 }
 
