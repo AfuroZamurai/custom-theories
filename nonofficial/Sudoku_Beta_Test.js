@@ -1336,15 +1336,15 @@ var getFontSize = (type) => {
         case LABEL:
             switch (deviceSize){
                 case TINY:
-                    return 12;
+                    return 10;
                 case SMALL:
-                    return 12;
+                    return 11;
                 case NORMAL:
-                    return 14;
+                    return 12;
                 case BIG:
-                    return 16;
+                    return 13;
                 case LARGE:
-                    return 16;
+                    return 14;
                 default:
                     throw new Error("Cannot calculate font size for unknown device size type " + deviceSize + "!");
             }
@@ -1418,15 +1418,15 @@ var getNumberButtonSize = () => {
 
     switch (deviceSize){
         case TINY:
-            return 25;
+            return 22;
         case SMALL:
-            return 30;
+            return 26;
         case NORMAL:
-            return 35;
+            return 30;
         case BIG:
-            return 40;
+            return 35;
         case LARGE:
-            return 45;
+            return 40;
         default:
             throw new Error("Cannot calculate number button size for unknown device size type " + deviceSize + "!");
     }
@@ -1439,27 +1439,27 @@ var getActionButtonSize = () => {
         case TINY:
             return {
                 "Width": 75,
-                "Height": 30
+                "Height": 26
             };
         case SMALL:
             return {
                 "Width": 80,
-                "Height": 35
+                "Height": 25
             };
         case NORMAL:
             return {
                 "Width": 85,
-                "Height": 40
+                "Height": 35
             };
         case BIG:
             return {
                 "Width": 90,
-                "Height": 45
+                "Height": 40
             };
         case LARGE:
             return {
                 "Width": 95,
-                "Height": 50
+                "Height": 45
             };
         default:
             throw new Error("Cannot calculate action button size for unknown device size type " + deviceSize + "!");
@@ -1817,26 +1817,33 @@ var createPopupUI = (difficulty, board) => {
     timerLabel = ui.createLatexLabel({
         text: timerString,
         horizontalTextAlignment: TextAlignment.CENTER,
-        margin: new Thickness(0, 5, 0, 5),
-        fontSize: fontSize
+        margin: new Thickness(2, 4, 2, 2),
+        fontSize: fontSize,
+        row: 0, column: 0
+    });
+    hintLabel = ui.createLatexLabel({
+        text: "Hints used: " + getTimerForDifficulty(difficulty).hints,
+        horizontalTextAlignment: TextAlignment.CENTER,
+        margin: new Thickness(2, 4, 2, 2),
+        fontSize: fontSize,
+        row: 0, column: 1
     });
     bestTimeLabel = ui.createLatexLabel({
         text: bestTimerString,
         horizontalTextAlignment: TextAlignment.CENTER,
-        margin: new Thickness(0, 3, 0, 5),
+        margin: new Thickness(2, 1, 2, 2),
         fontSize: fontSize
     });
     stateLabel = ui.createLatexLabel({
         text: "Solve for " + rewardForDifficulty(difficulty) + " stars",
         horizontalTextAlignment: TextAlignment.CENTER,
-        margin: new Thickness(0, 3, 0, 5),
+        margin: new Thickness(2, 1, 2, 2),
         fontSize: fontSize
     });
-    hintLabel = ui.createLatexLabel({
-        text: "Hints used: " + getTimerForDifficulty(difficulty).hints,
-        horizontalTextAlignment: TextAlignment.CENTER,
-        margin: new Thickness(0, 3, 0, 5),
-        fontSize: fontSize
+
+    let timerHintRow = ui.createGrid({
+        columnDefinitions: ["1*", "1*"],
+        children: [timerLabel, hintLabel]
     });
 
     var numberButtonGrid = createNumberButtonsGrid(difficulty, board, stateLabel);
@@ -1847,10 +1854,9 @@ var createPopupUI = (difficulty, board) => {
         closeOnBackgroundClicked: false,
         content: ui.createStackLayout({
             children: [
-                timerLabel,
+                timerHintRow,
                 bestTimeLabel,
                 stateLabel,
-                hintLabel,
                 gameGrid,
                 numberButtonGrid,
                 buttonGrid
