@@ -1951,7 +1951,7 @@ var createButtonsGrid = (difficulty) => {
 
             var hint = getHint(board);
             if (hint === null) {
-                stateLabel.text = "No solution found!";
+                stateLabel.text = "No solution found in time!";
                 return;
             }
 
@@ -3010,16 +3010,11 @@ var _solveIterative = (vals, rUsed, cUsed, bUsed) => {
     let stack = [];
     let hintId = -1;
     let iteration = 1;
-    
-    log("vals: " + vals.join(""))
-    log("rUsed: " + rUsed.join(""))
-    log("cUsed: " + cUsed.join(""))
-    log("bUsed: " + bUsed.join(""))
 
     while (true) {
-        log("Iteration " + iteration);
+        //log("Solve iteration " + iteration);
         iteration++;
-         if(iteration > 81) {
+         if(iteration > 100) {
              log("Too many iterations, aborting");
              return  -1;
          }
@@ -3063,7 +3058,6 @@ var _solveIterative = (vals, rUsed, cUsed, bUsed) => {
             continue;
         }
 
-        // MRV-Feld gefunden: Ersten Kandidaten probieren
         var r = (bestIdx / 9) | 0, c = bestIdx % 9, b = boxIdx(r, c);
         var cands = ~(rUsed[r] | cUsed[c] | bUsed[b]) & 0x3FE;
 
@@ -3113,9 +3107,9 @@ var generatePuzzle = (difficulty) => {
     for(var i = 0; i < shuffledCompletedBoard.values.length; i++){
         vals[i] = shuffledCompletedBoard.values[i];
     }
-    var rUsed = new Array(9).fill(1);
-    var cUsed = new Array(9).fill(1);
-    var bUsed = new Array(9).fill(1);
+    var rUsed = new Array(9).fill(1022);
+    var cUsed = new Array(9).fill(1022);
+    var bUsed = new Array(9).fill(1022);
 
     var positions = [];
     for (var i = 0; i < BOARD_SIZE; i++) positions.push(i);
@@ -3127,12 +3121,12 @@ var generatePuzzle = (difficulty) => {
     var givens = BOARD_SIZE;
     let max_iterations = 5;
     let iterations = 0;
-    let maxRemovals = 64;
+    let maxRemovals = 10;
     log("Starting puzzle generation with " + givens + " givens");
     while(givens > target){
         iterations++;
-        //log("Iteration " + iterations);
-        //log("Givens: " + givens);
+        log("Iteration " + iterations);
+        log("Givens: " + givens);
         if(iterations > max_iterations){
             //log("Max iterations reached, puzzle generation failed");
             break;
@@ -3160,13 +3154,13 @@ var generatePuzzle = (difficulty) => {
                 saved[removed] = vals[idx];
                 removed++;
                 var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
-                var bit = 1 << saved;
+                var bit = 1 << val;
 
                 vals[idx] = 0;
                 rUsed[r] ^= bit; cUsed[c] ^= bit; bUsed[b] ^= bit;
             }
             pi += index - 1;
-            log("Removed " + removed + " values from board");
+            log("Checking removal of " + removed + " values from board");
             //log("Removing " + saved.join(', ') + " from ids " + ids.join(', '));
             
             if (_solveIterative(vals.slice(), rUsed.slice(), cUsed.slice(), bUsed.slice()) > -1) {
@@ -3176,9 +3170,9 @@ var generatePuzzle = (difficulty) => {
                 log("Removal failed");
                 for(let i = 0; i < removed; i++){
                     let idx = ids[i];
-                    vals[idx] = saved[idx];
+                    vals[idx] = saved[i];
                     var r = (idx / 9) | 0, c = idx % 9, b = boxIdx(r, c);
-                    var bit = 1 << saved[idx];
+                    var bit = 1 << saved[i];
                     rUsed[r] |= bit; cUsed[c] |= bit; bUsed[b] |= bit;
                 }
             }
@@ -3186,12 +3180,7 @@ var generatePuzzle = (difficulty) => {
         }
     }
     
-
     log("Generated " + difficulty + " puzzle with " + givens + " givens (target: " + target + ")");
-    log("vals: " + vals.join(""))
-    log("rUsed: " + rUsed.join(""))
-    log("cUsed: " + cUsed.join(""))
-    log("bUsed: " + bUsed.join(""))
 
     var board = createEmptyBoard();
     for (var i = 0; i < BOARD_SIZE; i++) {
@@ -3200,10 +3189,6 @@ var generatePuzzle = (difficulty) => {
         board.given[i] = n > 0 ? 1 : 0;
     }
     recomputeConstraints(board);
-    log("vals: " + vals.join(""))
-    log("rowUsed: " + board.rowUsed.join(""))
-    log("colUsed: " + board.colUsed.join(""))
-    log("boxUsed: " + board.boxUsed.join(""))
     return board;
 };
 
