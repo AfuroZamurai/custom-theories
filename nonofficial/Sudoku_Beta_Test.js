@@ -9,8 +9,10 @@ import { theory } from "./api/Theory";
 import { TextAlignment } from "./api/ui/properties/TextAlignment";
 import { Thickness } from "./api/ui/properties/Thickness";
 import { Color } from "./api/ui/properties/Color";
-import { Theme } from ".api/Settings";
+import { Theme } from "./api/Settings";
 import { LayoutOptions } from "./api/ui/properties/LayoutOptions";
+import { ui } from "./api/ui/UI";
+import {log} from "../../TheorySDK.Win.1.4.41/api/Utils";
 //#endregion
 
 //#region Globals
@@ -26,16 +28,19 @@ var easy, medium, hard, expert, omega, devilish;
 var difficulty;
 
 /**
- * A board is containing 81 cells, with each cell being the following datastructure (TODO: change to a faster representation)
- *
- * cell = {
- number: number,
- isGiven: number > 0,
- cornerMarks: [],
- centerMarks: []
- }
+ * A board is a flat-array bitboard representation:
+ * {
+ *   values:      Int[81]  — digit 0-9 per cell (0 = empty)
+ *   given:       Int[81]  — 1 if given (immutable), 0 if player-fillable
+ *   cornerMarks: Int[81]  — bitmask, bit n = corner mark n is active (bits 1-9)
+ *   centerMarks: Int[81]  — bitmask, bit n = center mark n is active (bits 1-9)
+ *   rowUsed:     Int[9]   — bitmask of digits placed in each row (for solver)
+ *   colUsed:     Int[9]   — bitmask of digits placed in each column
+ *   boxUsed:     Int[9]   — bitmask of digits placed in each 3x3 box
+ * }
  */
 var easyBoard, mediumBoard, hardBoard, expertBoard, omegaBoard, devilishBoard;
+var board;
 
 var easyUndoStack, mediumUndoStack, hardUndoStack, expertUndoStack, omegaUndoStack, devilishUndoStack;
 var easyRedoStack, mediumRedoStack, hardRedoStack, expertRedoStack, omegaRedoStack, devilishRedoStack;
@@ -1046,52 +1051,49 @@ var getInternalState = () => {
 }
 
 var setInternalState = (state) => {
-    // restore all difficulty board states and undo/redo stacks
     log("Restoring...");
 
     var saveState = JSON.parse(state);
 
-    //log(saveState);
+    easyBoard    = saveState[0];
+    mediumBoard  = saveState[1];
+    hardBoard    = saveState[2];
+    expertBoard  = saveState[3];
+    omegaBoard   = saveState[4];
+    devilishBoard= saveState[5];
+    testBoard    = saveState[6];
 
-    easyBoard = saveState[0];
-    mediumBoard = saveState[1];
-    hardBoard = saveState[2];
-    expertBoard = saveState[3];
-    omegaBoard = saveState[4];
-    devilishBoard = saveState[5];
-    testBoard = saveState[6];
+    easyUndoStack    = saveState[7];
+    mediumUndoStack  = saveState[8];
+    hardUndoStack    = saveState[9];
+    expertUndoStack  = saveState[10];
+    omegaUndoStack   = saveState[11];
+    devilishUndoStack= saveState[12];
+    testUndoStack    = saveState[13];
 
-    easyUndoStack = saveState[7];
-    mediumUndoStack = saveState[8];
-    hardUndoStack = saveState[9];
-    expertUndoStack = saveState[10];
-    omegaUndoStack = saveState[11];
-    devilishUndoStack = saveState[12];
-    testUndoStack = saveState[13];
+    easyRedoStack    = saveState[14];
+    mediumRedoStack  = saveState[15];
+    hardRedoStack    = saveState[16];
+    expertRedoStack  = saveState[17];
+    omegaRedoStack   = saveState[18];
+    devilishRedoStack= saveState[19];
+    testRedoStack    = saveState[20];
 
-    easyRedoStack = saveState[14];
-    mediumRedoStack = saveState[15];
-    hardRedoStack = saveState[16];
-    expertRedoStack = saveState[17];
-    omegaRedoStack = saveState[18];
-    devilishRedoStack = saveState[19];
-    testRedoStack = saveState[20];
+    easyTimer    = saveState[21];
+    mediumTimer  = saveState[22];
+    hardTimer    = saveState[23];
+    expertTimer  = saveState[24];
+    omegaTimer   = saveState[25];
+    devilishTimer= saveState[26];
+    testTimer    = saveState[27];
 
-    easyTimer = saveState[21];
-    mediumTimer = saveState[22];
-    hardTimer = saveState[23];
-    expertTimer = saveState[24];
-    omegaTimer = saveState[25];
-    devilishTimer = saveState[26];
-    testTimer = saveState[27];
-
-    easyBestTimer = saveState[28];
-    mediumBestTimer = saveState[29];
-    hardBestTimer = saveState[30];
-    expertBestTimer = saveState[31];
-    omegaBestTimer = saveState[32];
-    devilishBestTimer = saveState[33];
-    testBestTimer = saveState[34];
+    easyBestTimer    = saveState[28];
+    mediumBestTimer  = saveState[29];
+    hardBestTimer    = saveState[30];
+    expertBestTimer  = saveState[31];
+    omegaBestTimer   = saveState[32];
+    devilishBestTimer= saveState[33];
+    testBestTimer    = saveState[34];
 }
 
 var getPrimaryEquation = () => {
@@ -1236,8 +1238,8 @@ var getInvalidBackgroundColor = (preset) => {
 
 var resetBackgroundColors = () => {
     for (var square of gameGrid.children) {
-        var cell = board[getBoardNum(square.row, square.column)];
-        square.backgroundColor = getBackgroundColor(cell.isGiven)
+        var idx = getBoardNum(square.row, square.column);
+        square.backgroundColor = getBackgroundColor(board.given[idx]);
     }
 }
 
@@ -1265,11 +1267,9 @@ var getSelectedBorderColor = () => {
 
 var markInvalidCells = (wrongCells) => {
     for (var wrongCell of wrongCells) {
-        var row = wrongCell[0];
-        var column = wrongCell[1];
+        var row = wrongCell[0], column = wrongCell[1];
         var wrongSquare = gameGrid.children[row * 9 + column];
-        //log("(" + row + "," + column + "): " + wrongSquare.content.children[0].text);
-        var isGiven = board[row * 9 + column].isGiven;
+        var isGiven = board.given[row * 9 + column];
         wrongSquare.backgroundColor = getInvalidBackgroundColor(isGiven);
     }
 }
@@ -1297,11 +1297,13 @@ var updateTimerInSave = () => {
     currentStartTime = Date.now();
 }
 
-var UpdateBoardAndSquare = (cell, cellIndex) => {
-    board[cellIndex] = cell;
-
+var UpdateBoardAndSquare = (savedState, cellIndex) => {
+    board.values[cellIndex]      = savedState.value;
+    board.cornerMarks[cellIndex] = savedState.cornerMarks;
+    board.centerMarks[cellIndex] = savedState.centerMarks;
+    recomputeConstraints(board);
     var square = GetSquare(cellIndex);
-    updateSquareFromCell(square, cell);
+    updateSquareFromCell(square, board, cellIndex);
 }
 
 var GetSquare = (index) => {
@@ -1450,25 +1452,28 @@ var getActionButtonSize = () => {
     }
 }
 
-var createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
+var createSquare = (i, j, board, idx, fontSizeNumber, fontSizeMark) => {
+    var v = board.values[idx];
+    var isGiven = board.given[idx];
+
     let number = ui.createLabel({
         fontSize: fontSizeNumber,
         horizontalOptions: LayoutOptions.CENTER,
         verticalOptions: LayoutOptions.CENTER,
-        text: cell.number < 1 ? "" : `${cell.number}`,
+        text: v < 1 ? "" : `${v}`,
     });
 
     let pencilMarks = [];
     let layoutOptions = [LayoutOptions.START, LayoutOptions.CENTER, LayoutOptions.END]
-    for (let v = 0; v < layoutOptions.length; v++) {
+    for (let vv = 0; vv < layoutOptions.length; vv++) {
         for (let h = 0; h < layoutOptions.length; h++) {
-            if(h == 1 && v != 1 || h != 1 && v == 1)
+            if(h == 1 && vv != 1 || h != 1 && vv == 1)
                 continue;
 
             let markLabel = ui.createLabel({
                 fontSize: fontSizeMark,
                 horizontalOptions: layoutOptions[h],
-                verticalOptions: layoutOptions[v]
+                verticalOptions: layoutOptions[vv]
             });
 
             pencilMarks.push(markLabel);
@@ -1483,19 +1488,16 @@ var createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
         row: i,
         column: j,
         margin: new Thickness(1, 1, j % 3 == 2 ? 4 : 1, i % 3 == 2 ? 4 : 1),
-        backgroundColor: getBackgroundColor(cell.isGiven),
+        backgroundColor: getBackgroundColor(isGiven),
         borderColor: getBorderColor(),
         content: ui.createGrid({
             children: [number, markGrid]
         }),
     });
 
-    if(isEmpty(cell)) {
-        if(cell.cornerMarks.length > 0)
-            setCornerNumbers(cell, square.content);
-
-        if(cell.centerMarks.length > 0)
-            setCenterNumbers(cell, square.content);
+    if (v < 1) {
+        if (board.cornerMarks[idx] !== 0) setCornerNumbers(board.cornerMarks[idx], square.content);
+        if (board.centerMarks[idx] !== 0) setCenterNumbers(board.centerMarks[idx], square.content);
     }
 
     square.onTouched = (e) => {
@@ -1511,7 +1513,7 @@ var createSquare = (i, j, cell, fontSizeNumber, fontSizeMark) => {
                 selectedSquare.borderColor = getBorderColor();
             }
 
-            if(cell.isGiven) {
+            if(isGiven) {
                 selectedGivenSquare = square;
                 selectedSquare = null;
             }
@@ -1539,8 +1541,8 @@ var createGameGrid = (board) => {
     let c = [];
     for (let x = 0; x < 9; x++) {
         for (let y = 0; y < 9; y++) {
-            var cell = board[getBoardNum(x, y)];
-            var square = createSquare(x, y, cell, fontSizeNumber, fontSizeMark);
+            var idx = getBoardNum(x, y);
+            var square = createSquare(x, y, board, idx, fontSizeNumber, fontSizeMark);
             c.push(square);
         }
     }
@@ -1572,9 +1574,8 @@ var createNumberButtonsGrid = (difficulty, board, stateLabel) => {
                 }
 
                 var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
-                var cell = board[cellIndex];
 
-                addToUndoStack(difficulty, cell, cellIndex);
+                addToUndoStack(difficulty, board, cellIndex);
                 resetRedoStack(difficulty);
 
                 setNumber(i, board, selectedSquare.row, selectedSquare.column);
@@ -1639,9 +1640,8 @@ var createButtonsGrid = (difficulty) => {
                 return;
 
             var cellIndex = getBoardNum(selectedSquare.row, selectedSquare.column);
-            var cell = board[cellIndex];
 
-            addToUndoStack(difficulty, cell, cellIndex);
+            addToUndoStack(difficulty, board, cellIndex);
             resetRedoStack(difficulty);
 
             clearCell(board, selectedSquare.row, selectedSquare.column, selectedSquare.content);
@@ -1834,7 +1834,7 @@ var getBoard = (difficulty) => {
     var randomBoard = null;
     switch(difficulty) {
         case EASY:
-            if(easyBoard == null || easyBoard.length == 0) {
+            if(easyBoard == null || easyBoard.length === 0) {
                 randomBoard = getRandomBoard(difficulty);
                 easyBoard = generate(randomBoard);
             }
@@ -1899,147 +1899,88 @@ var checkBoard = (board) => {
     return checkForDuplicates(board, hasAllNumbers(board));
 }
 
-var setNormalNumber = (number, cell, gridCellContent) => {
-    if(cell.number == number) {
-        cell.number = 0;
-        cell.cornerMarks = []
-        cell.centerMarks = []
+var setNormalNumber = (number, board, idx, gridCellContent) => {
+    if (board.values[idx] == number) {
+        board.values[idx] = 0;
+        board.cornerMarks[idx] = 0;
+        board.centerMarks[idx] = 0;
         gridCellContent.children[0].text = "";
+        recomputeConstraints(board);
         return;
     }
-
     var marksGrid = gridCellContent.children[1];
-    for(var j = 0; j < marksGrid.children.length; j++) {
-        marksGrid.children[j].text = ""
-    }
-    cell.number = number;
-    gridCellContent.children[0].text = `${number}`
+    for (var j = 0; j < marksGrid.children.length; j++) marksGrid.children[j].text = "";
+    board.values[idx] = number;
+    board.cornerMarks[idx] = 0;
+    board.centerMarks[idx] = 0;
+    gridCellContent.children[0].text = `${number}`;
+    recomputeConstraints(board);
 }
 
-var setNormalNumberFromCell = (cell, gridCellContent) => {
-    if(cell.number < 1) {
+var setNormalNumberFromCell = (v, gridCellContent) => {
+    if (v < 1) {
         gridCellContent.children[0].text = "";
         return;
     }
-
     var marksGrid = gridCellContent.children[1];
-    for(var j = 0; j < marksGrid.children.length; j++) {
-        marksGrid.children[j].text = ""
-    }
-
-    gridCellContent.children[0].text = `${cell.number}`
+    for (var j = 0; j < marksGrid.children.length; j++) marksGrid.children[j].text = "";
+    gridCellContent.children[0].text = `${v}`;
 }
 
 var clearCornerNumbers = (gridCellContent) => {
-    for (let i of [0, 1, 3, 4]) {
-        gridCellContent.children[1].children[i].text = "";
-    }
+    for (let i of [0, 1, 3, 4]) gridCellContent.children[1].children[i].text = "";
 }
 
-var setCornerNumbers = (cell, gridCellContent) => {
-    let markIndices = [0, 1, 3, 4, 0, 1, 3, 4, 4]
-    for(let i = 0; i < cell.cornerMarks.length; i++) {
+// cornerBits is an integer bitmask; bit n = corner mark n is set
+var setCornerNumbers = (cornerBits, gridCellContent) => {
+    var marks = marksToArray(cornerBits);
+    var markIndices = [0, 1, 3, 4, 0, 1, 3, 4, 4];
+    for (let i = 0; i < marks.length; i++) {
         var markIndex = markIndices[i];
-
-        if(i <= 3) {
+        if (i <= 3) {
             gridCellContent.children[1].children[markIndex].text = [0, 3].includes(markIndex)
-                ? ` ${cell.cornerMarks[i]}`
-                : `${cell.cornerMarks[i]} `;
-        }
-        else {
+                ? ` ${marks[i]}` : `${marks[i]} `;
+        } else {
             gridCellContent.children[1].children[markIndex].text += [0, 3].includes(markIndex)
-                ? ` ${cell.cornerMarks[i]}`
-                : `${cell.cornerMarks[i]} `;
+                ? ` ${marks[i]}` : `${marks[i]} `;
         }
     }
 }
 
-var setCornerNumber = (number, cell, gridCellContent) => {
-    if(!isEmpty(cell))
-        return;
-
-    if(cell.cornerMarks.length == 0) {
-        cell.cornerMarks.push(number);
-        gridCellContent.children[1].children[0].text = ` ${number}`;
-        return;
-    }
-
-    if(cell.cornerMarks.includes(number)) {
-        log(cell.cornerMarks.join(', '));
-        cell.cornerMarks.splice(cell.cornerMarks.indexOf(number), 1);
-        log(cell.cornerMarks.join(', '));
-    } else {
-        cell.cornerMarks.push(number);
-        cell.cornerMarks.sort();
-    }
-
-    clearCornerNumbers(selectedSquare.content);
-    setCornerNumbers(cell, selectedSquare.content);
-}
-
-var setCornerNumbersFromCell = (cell, square, clearBeforeSet) => {
-    if(!isEmpty(cell))
-        return;
-
-    if(cell.cornerMarks.length == 0)
-        return;
-
-    if(clearBeforeSet)
-        clearCornerNumbers(square.content);
-
-    setCornerNumbers(cell, square.content);
+var setCornerNumber = (number, board, idx, gridCellContent) => {
+    if (board.values[idx] > 0) return;
+    board.cornerMarks[idx] ^= (1 << number);  // toggle bit
+    clearCornerNumbers(gridCellContent);
+    setCornerNumbers(board.cornerMarks[idx], gridCellContent);
 }
 
 var clearCenterNumbers = (gridCellContent) => {
     gridCellContent.children[1].children[2].text = "";
 }
 
-var setCenterNumbers = (cell, gridCellContent) => {
-    gridCellContent.children[1].children[2].text = cell.centerMarks.join('');
+// centerBits is an integer bitmask; bit n = center mark n is set
+var setCenterNumbers = (centerBits, gridCellContent) => {
+    gridCellContent.children[1].children[2].text = marksToArray(centerBits).join('');
 }
 
-var setCenterNumber = (number, cell, gridCellContent) => {
-    if(!isEmpty(cell))
-        return;
-
-    if(cell.centerMarks.length == 0) {
-        cell.centerMarks.push(number);
-        gridCellContent.children[1].children[2].text = `${number}`;
-        return;
-    }
-
-    if(cell.centerMarks.includes(number)) {
-        cell.centerMarks.splice(cell.centerMarks.indexOf(number), 1);
-    } else {
-        cell.centerMarks.push(number);
-        cell.centerMarks.sort();
-    }
-
-    setCenterNumbers(cell, gridCellContent);
-}
-
-var setCenterNumbersFromCell = (cell, square) => {
-    if(!isEmpty(cell))
-        return;
-
-    if(cell.centerMarks.length == 0)
-        return;
-
-    setCenterNumbers(cell, square.content);
+var setCenterNumber = (number, board, idx, gridCellContent) => {
+    if (board.values[idx] > 0) return;
+    board.centerMarks[idx] ^= (1 << number);  // toggle bit
+    setCenterNumbers(board.centerMarks[idx], gridCellContent);
 }
 
 var setNumber = (number, board, r, c) => {
-    if(selectedSquare != null) {
-        var cell = board[getBoardNum(r, c)];
+    if (selectedSquare != null) {
+        var idx = getBoardNum(r, c);
         switch (mode) {
             case NORMAL_MODE:
-                setNormalNumber(number, cell, selectedSquare.content);
+                setNormalNumber(number, board, idx, selectedSquare.content);
                 break;
             case CORNER_MODE:
-                setCornerNumber(number, cell, selectedSquare.content);
+                setCornerNumber(number, board, idx, selectedSquare.content);
                 break;
             case CENTER_MODE:
-                setCenterNumber(number, cell, selectedSquare.content);
+                setCenterNumber(number, board, idx, selectedSquare.content);
                 break;
             default:
                 break;
@@ -2047,45 +1988,28 @@ var setNumber = (number, board, r, c) => {
     }
 }
 
-/**
- * Updates the UI of a square according to the values of a given cell
- * @param {*} square
- * @param {*} cell
- */
-var updateSquareFromCell = (square, cell) => {
+// Updates the UI of a square from the board's flat arrays at cellIndex
+var updateSquareFromCell = (square, board, idx) => {
+    var v = board.values[idx];
     clearSquare(square.content);
-
-    setNormalNumberFromCell(cell, square.content);
-
-    if(cell.number >= 1)
-        return;
-
-    setCornerNumbersFromCell(cell, square, false);
-    setCenterNumbersFromCell(cell, square);
+    setNormalNumberFromCell(v, square.content);
+    if (v >= 1) return;
+    if (board.cornerMarks[idx] !== 0) setCornerNumbers(board.cornerMarks[idx], square.content);
+    if (board.centerMarks[idx] !== 0) setCenterNumbers(board.centerMarks[idx], square.content);
 }
 
-/**
- * Resets the UI for a square (removing any number, corner- and center marks)
- * @param {*} gridCellContent
- */
 var clearSquare = (gridCellContent) => {
     gridCellContent.children[0].text = "";
     clearCornerNumbers(gridCellContent);
     clearCenterNumbers(gridCellContent);
 }
 
-/**
- * Resets a cell and updates the UI accordingly
- * @param {*} board
- * @param {*} r
- * @param {*} c
- * @param {*} gridCellContent
- */
 var clearCell = (board, r, c, gridCellContent) => {
-    var cell = board[getBoardNum(r, c)];
-    cell.number = 0;
-    cell.cornerMarks = [];
-    cell.centerMarks = [];
+    var idx = getBoardNum(r, c);
+    board.values[idx] = 0;
+    board.cornerMarks[idx] = 0;
+    board.centerMarks[idx] = 0;
+    recomputeConstraints(board);
     clearSquare(gridCellContent);
 }
 
@@ -2259,58 +2183,28 @@ var resetUndoRedoStacks = (difficulty) => {
 
 var resetRedoStack = (difficulty) => {
     var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
-    difficultyRedoStack = [];
+    difficultyRedoStack.length = 0;  // clear in-place so all references see the change
     redoButton.isEnabled = false;
 }
 
-/**
- * For a given difficulty adds a cell to the stack containing all the previous states.
- * @param {*} difficulty The difficulty of the puzzle to select the correct stack
- * @param {*} cell The cell before an action took place, to save it for future restoration
- * @param {number} cellIndex The index of the saved cell in the board
- */
-var addToUndoStack = (difficulty, cell, cellIndex) => {
-    var undoState = {
-        cellIndex: cellIndex,
-        cell: deepcopyCell(cell)
-    };
-
+// Saves a compact cell snapshot (value + marks bitmasks) onto the undo stack
+var addToUndoStack = (difficulty, board, cellIndex) => {
     var difficultyUndoStack = getStackForModeAndDifficulty(difficulty, UNDO_MODE);
-    difficultyUndoStack.push(undoState);
-
+    difficultyUndoStack.push(snapshotCell(board, cellIndex));
     undoButton.isEnabled = true;
 }
 
-/**
- * For a given difficulty adds a cell to the stack containing all the states reverted by undo operations.
- * @param {*} difficulty The difficulty of the puzzle to select the correct stack
- * @param {*} cell The cell before an action took place, to save it for future restoration
- * @param {number} cellIndex The index of the saved cell in the board
- */
-var addToRedoStack = (difficulty, cell, cellIndex) => {
-    var redoState = {
-        cellIndex: cellIndex,
-        cell: deepcopyCell(cell)
-    };
-
+// Saves a compact cell snapshot onto the redo stack
+var addToRedoStack = (difficulty, board, cellIndex) => {
     var difficultyRedoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
-    difficultyRedoStack.push(redoState);
-
+    difficultyRedoStack.push(snapshotCell(board, cellIndex));
     redoButton.isEnabled = true;
 }
 
-/**
- * Undo the last taken action. This will pop the latest entry from the undo stack, update the board, update the UI and add the cell to the redo stack.
- * @param {*} difficulty The difficulty stack to get the previous state from
- */
 var undo = (difficulty) => {
     restoreState(difficulty, UNDO_MODE);
 }
 
-/**
- * Redo the last undone action. This will pop the latest entry from the redo stack, update the board, update the UI and add the cell to the undo stack.
- * @param {*} difficulty The difficulty stack to get the previous state from
- */
 var redo = (difficulty) => {
     restoreState(difficulty, REDO_MODE);
 }
@@ -2321,29 +2215,28 @@ var restoreState = (difficulty, operationMode) => {
 
     var difficultyStack = getStackForModeAndDifficulty(difficulty, operationMode);
     var previousState = difficultyStack.pop();
-    var currentState = board[previousState.cellIndex];
+    var idx = previousState.cellIndex;
 
-    var operation = operationMode == UNDO_MODE ? "Undo" : "Redo";
-    logObject(previousState, operation + " to following cell state: ");
-    logObject(previousState.cell, "Cell: ");
+    // Capture current cell state before overwriting (for the opposite stack)
+    var currentSnapshot = snapshotCell(board, idx);
 
-    UpdateBoardAndSquare(previousState.cell, previousState.cellIndex);
+    UpdateBoardAndSquare(previousState, idx);
 
     if(operationMode == UNDO_MODE) {
-        addToRedoStack(difficulty, currentState, previousState.cellIndex);
-    }
-    else
-    {
-        addToUndoStack(difficulty, currentState, previousState.cellIndex);
+        var redoStack = getStackForModeAndDifficulty(difficulty, REDO_MODE);
+        redoStack.push(currentSnapshot);
+        redoButton.isEnabled = true;
+    } else {
+        var undoStack = getStackForModeAndDifficulty(difficulty, UNDO_MODE);
+        undoStack.push(currentSnapshot);
+        undoButton.isEnabled = true;
     }
 
-    log(difficultyStack.length);
     if(difficultyStack.length == 0) {
         var operationButton = operationMode == UNDO_MODE ? undoButton : redoButton;
         operationButton.isEnabled = false;
     }
 
-    // Update invalid markers
     resetBackgroundColors();
     var checkResult = checkBoard(board);
     if(checkResult[1].size > 0)
@@ -2602,93 +2495,110 @@ var TimerAsString = (timer, includeHints) => {
 //#region Sudoku Game Utility
 var getBoardNum = (row, col) => row * ROWS + col;
 
-/**
- * Checks if the cell has no valid Sudoku number (pencilmarks do not count!)
- * @param {*} cell
- * @returns True if no number is in the cell
- */
-var isEmpty = (cell) => {
-    return cell.number < 1;
-}
+// Bitboard utilities: bit n (1<<n) represents number n, using bits 1-9
+var numBit = (n) => 1 << n;
+var boxIdx = (r, c) => ((r / 3) | 0) * 3 + ((c / 3) | 0);
 
-var hasAllNumbers = (board) => {
-    for(let i = 0; i < BOARD_SIZE; i++) {
-        if(board[i].number < 1) {
-            return false;
+// Convert bitmask back to a sorted array of numbers 1-9 (for UI rendering)
+var marksToArray = (bits) => {
+    var arr = [];
+    for (var n = 1; n <= 9; n++) {
+        if (bits & (1 << n)) arr.push(n);
+    }
+    return arr;
+};
+
+// Rebuild rowUsed/colUsed/boxUsed from board.values (O(81), called after any value change)
+var recomputeConstraints = (board) => {
+    for (var i = 0; i < 9; i++) {
+        board.rowUsed[i] = 0;
+        board.colUsed[i] = 0;
+        board.boxUsed[i] = 0;
+    }
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        var v = board.values[i];
+        if (v > 0) {
+            var r = (i / 9) | 0;
+            var c = i % 9;
+            board.rowUsed[r] |= (1 << v);
+            board.colUsed[c] |= (1 << v);
+            board.boxUsed[boxIdx(r, c)] |= (1 << v);
         }
     }
+};
 
+var createEmptyBoard = () => ({
+    values:      new Array(BOARD_SIZE).fill(0),
+    given:       new Array(BOARD_SIZE).fill(0),
+    cornerMarks: new Array(BOARD_SIZE).fill(0),
+    centerMarks: new Array(BOARD_SIZE).fill(0),
+    rowUsed:     new Array(9).fill(0),
+    colUsed:     new Array(9).fill(0),
+    boxUsed:     new Array(9).fill(0)
+});
+
+var isEmpty = (board, idx) => board.values[idx] < 1;
+
+var hasAllNumbers = (board) => {
+    for (var i = 0; i < BOARD_SIZE; i++) {
+        if (board.values[i] < 1) return false;
+    }
     return true;
-}
+};
 
-/**
- * Checks a given board for numbers violating the Sudoku rules, so appearing more than once in a row, column or box.
- * Can be used to check if a board is solved, if all cells have a number.
- * It will check for every rule violation and not abort early.
- * @param {*} board The board to be checked
- * @param {*} fullBoard If the board has numbers in every cell
- * @returns An array where the first entry indicates if the board is in a correctly solved state (impossible if fullBoard is false)
- * and the second entry is an array holding [row, column] pairs of all numbers violating the rules (empty if solved)
- */
+// Bitboard-based duplicate check: O(81) instead of O(9*81)
 var checkForDuplicates = (board, fullBoard) => {
     var correct = fullBoard;
     var wrongCells = new Set();
 
     // Check rows
-    for(let r = 0; r < ROWS; r++) {
-        for (let rc = 0; rc < COLS; rc++) {
-            var currentNumber = board[getBoardNum(r, rc)].number;
-            if(currentNumber < 1)
-                continue;
-            for(let rcc = rc + 1; rcc < COLS; rcc++) {
-                var rowCompareNumber = board[getBoardNum(r, rcc)].number;
-                if(currentNumber == rowCompareNumber) {
-                    correct = false;
-                    wrongCells.add([r, rc]);
-                    wrongCells.add([r, rcc]);
-                }
+    for (var r = 0; r < ROWS; r++) {
+        var seen = 0, dup = 0;
+        for (var c = 0; c < COLS; c++) {
+            var v = board.values[r * 9 + c];
+            if (v > 0) { var bit = 1 << v; if (seen & bit) dup |= bit; seen |= bit; }
+        }
+        if (dup) {
+            correct = false;
+            for (var c = 0; c < COLS; c++) {
+                var v = board.values[r * 9 + c];
+                if (v > 0 && (dup & (1 << v))) wrongCells.add([r, c]);
             }
         }
     }
 
     // Check columns
-    for(let c = 0; c < COLS; c++) {
-        for (let cr = 0; cr < ROWS; cr++) {
-            var currentNumber = board[getBoardNum(cr, c)].number;
-            if(currentNumber < 1)
-                continue;
-            for(let crc = cr + 1; crc < ROWS; crc++) {
-                var columnCompareNumber = board[getBoardNum(crc, c)].number;
-                if(currentNumber == columnCompareNumber) {
-                    correct = false;
-                    wrongCells.add([cr, c]);
-                    wrongCells.add([crc, c]);
-                }
+    for (var c = 0; c < COLS; c++) {
+        var seen = 0, dup = 0;
+        for (var r = 0; r < ROWS; r++) {
+            var v = board.values[r * 9 + c];
+            if (v > 0) { var bit = 1 << v; if (seen & bit) dup |= bit; seen |= bit; }
+        }
+        if (dup) {
+            correct = false;
+            for (var r = 0; r < ROWS; r++) {
+                var v = board.values[r * 9 + c];
+                if (v > 0 && (dup & (1 << v))) wrongCells.add([r, c]);
             }
         }
     }
 
     // Check boxes
-    for(let bri = 0; bri < ROWS; bri += 3) {
-        for(let bci = 0; bci < COLS; bci += 3) {
-            for(let br = 0; br < BOX_SIZE; br++) {
-                for(let bc = 0; bc < BOX_SIZE; bc++) {
-                    var currentNumber = board[getBoardNum(bri + br, bci + bc)].number;
-                    if(currentNumber < 1)
-                        continue;
-                    for(let brc = 0; brc < BOX_SIZE; brc++) {
-                        for(let bcc = 0; bcc < BOX_SIZE; bcc++) {
-                            if(brc == br && bcc == bc)
-                                continue;
-
-                            var boxCompareNumber = board[getBoardNum(bri + brc, bci + bcc)].number;
-                            if(currentNumber == boxCompareNumber) {
-                                correct = false;
-                                wrongCells.add([bri + br, bci + bc]);
-                                wrongCells.add([bri + brc, bci + bcc]);
-                            }
-                        }
-                    }
+    for (var bi = 0; bi < 9; bi++) {
+        var br = ((bi / 3) | 0) * 3, bc = (bi % 3) * 3;
+        var seen = 0, dup = 0;
+        for (var dr = 0; dr < 3; dr++) {
+            for (var dc = 0; dc < 3; dc++) {
+                var v = board.values[(br + dr) * 9 + (bc + dc)];
+                if (v > 0) { var bit = 1 << v; if (seen & bit) dup |= bit; seen |= bit; }
+            }
+        }
+        if (dup) {
+            correct = false;
+            for (var dr = 0; dr < 3; dr++) {
+                for (var dc = 0; dc < 3; dc++) {
+                    var v = board.values[(br + dr) * 9 + (bc + dc)];
+                    if (v > 0 && (dup & (1 << v))) wrongCells.add([br + dr, bc + dc]);
                 }
             }
         }
@@ -2698,20 +2608,20 @@ var checkForDuplicates = (board, fullBoard) => {
 }
 
 var boardFromString = (boardString) => {
-    var board = []
-    for(let i = 0; i < boardString.length; i++) {
-        var curChar = boardString.charAt(i);
-        var number = parseInt(curChar, 10);
-
-        board[i] = {
-            number: number,
-            isGiven: number > 0,
-            cornerMarks: [],
-            centerMarks: []
+    var board = createEmptyBoard();
+    log("Initializing board from string " + boardString);
+    for (var i = 0; i < boardString.length; i++) {
+        var n = parseInt(boardString.charAt(i), 10);
+        board.values[i] = n;
+        board.given[i] = n > 0 ? 1 : 0;
+        if (n > 0) {
+            var r = (i / 9) | 0, c = i % 9;
+            board.rowUsed[r] |= (1 << n);
+            board.colUsed[c] |= (1 << n);
+            board.boxUsed[boxIdx(r, c)] |= (1 << n);
         }
     }
-
-    return board
+    return board;
 }
 
 var getRandomBoard = (difficulty) => {
@@ -2752,125 +2662,146 @@ var getRandomBoard = (difficulty) => {
     return boardFromString(boardString);
 }
 
-var deepcopyCell = (cell) => {
-    var cellcopy = JSON.parse(JSON.stringify(cell));
-    return cellcopy;
-}
+// Snapshot a single cell's mutable state (value + marks) for undo/redo
+var snapshotCell = (board, idx) => ({
+    cellIndex: idx,
+    value:       board.values[idx],
+    cornerMarks: board.cornerMarks[idx],
+    centerMarks: board.centerMarks[idx]
+});
 
-var deepcopy = (board) => {
-    var copy = []
-    for(let i = 0; i < board.length; i++) {
-        // Apparently that is the way to go?
-        var cellcopy = JSON.parse(JSON.stringify(board[i]));
-        copy[i] = cellcopy;
-    }
-    return copy;
-}
+var deepcopyBoard = (board) => ({
+    values:      board.values.slice(),
+    given:       board.given.slice(),
+    cornerMarks: board.cornerMarks.slice(),
+    centerMarks: board.centerMarks.slice(),
+    rowUsed:     board.rowUsed.slice(),
+    colUsed:     board.colUsed.slice(),
+    boxUsed:     board.boxUsed.slice()
+});
 
 var rotateBoard = (board, numRotations) => {
-    for(let i = 0; i < numRotations; i++) {
-        var copy = deepcopy(board);
-        for(let r = 0; r < ROWS; r++) {
-            for(let c = 0; c < COLS; c++) {
-                // index magic was adapted from here: https://math.stackexchange.com/a/1676457/528931 (and here https://github.com/MitchelPaulin/sudoku-rs/blob/main/src/puzzle_transformer.rs)
-                board[c * 9 + 9 - r - 1] = copy[getBoardNum(r, c)]
+    for (let i = 0; i < numRotations; i++) {
+        var vals = board.values.slice(), givn = board.given.slice(),
+            corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                // index magic: https://math.stackexchange.com/a/1676457/528931
+                var src = getBoardNum(r, c), dst = c * 9 + 9 - r - 1;
+                board.values[dst] = vals[src]; board.given[dst] = givn[src];
+                board.cornerMarks[dst] = corn[src]; board.centerMarks[dst] = cent[src];
             }
         }
     }
+    recomputeConstraints(board);
 }
 
 var mirrorBoardHorizontally = (board) => {
-    var copy = deepcopy(board);
-
-    for(let r = 0; r < ROWS; r++) {
-        for(let c = 0; c < COLS; c++) {
-            board[getBoardNum(r, c)] = copy[getBoardNum(r, COLS - 1 - c)];
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            var src = getBoardNum(r, COLS - 1 - c), dst = getBoardNum(r, c);
+            board.values[dst] = vals[src]; board.given[dst] = givn[src];
+            board.cornerMarks[dst] = corn[src]; board.centerMarks[dst] = cent[src];
         }
     }
+    recomputeConstraints(board);
 }
 
 var mirrorBoardVertically = (board) => {
-    var copy = deepcopy(board);
-
-    for(let r = 0; r < ROWS; r++) {
-        for(let c = 0; c < COLS; c++) {
-            board[getBoardNum(r, c)] = copy[getBoardNum(ROWS -1 - r, c)];
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            var src = getBoardNum(ROWS - 1 - r, c), dst = getBoardNum(r, c);
+            board.values[dst] = vals[src]; board.given[dst] = givn[src];
+            board.cornerMarks[dst] = corn[src]; board.centerMarks[dst] = cent[src];
         }
     }
+    recomputeConstraints(board);
 }
 
 var permutateRowsGlobally = (board) => {
     var permutation = getPermutationMapping(3, false);
-
-    var copy = deepcopy(board);
-
-    for(let rb = 0; rb < 3; rb++) {
-        var correspondentRowBlock = permutation[rb];
-        for(let r = 0; r < 3; r++) {
-            for(let c = 0; c < COLS; c++) {
-                board[getBoardNum(rb * 3 + r, c)] = copy[getBoardNum(correspondentRowBlock * 3 + r, c)];
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let rb = 0; rb < 3; rb++) {
+        var srb = permutation[rb];
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < COLS; c++) {
+                var src = getBoardNum(srb * 3 + r, c), dst = getBoardNum(rb * 3 + r, c);
+                board.values[dst] = vals[src]; board.given[dst] = givn[src];
+                board.cornerMarks[dst] = corn[src]; board.centerMarks[dst] = cent[src];
             }
         }
     }
+    recomputeConstraints(board);
 }
 
 var permutateRowsBlockwise = (board) => {
-    var permutationBlock1 = getPermutationMapping(3, false);
-    var permutationBlock2 = getPermutationMapping(3, false);
-    var permutationBlock3 = getPermutationMapping(3, false);
-
-    var copy = deepcopy(board);
-
-    for(let r = 0; r < 3; r++) {
-        for(let c = 0; c < COLS; c++) {
-            board[getBoardNum(permutationBlock1[r], c)] = copy[getBoardNum(r, c)];
-            board[getBoardNum(permutationBlock2[r] + 3, c)] = copy[getBoardNum(r + 3, c)];
-            board[getBoardNum(permutationBlock3[r] + 6, c)] = copy[getBoardNum(r + 6, c)];
+    var p1 = getPermutationMapping(3, false), p2 = getPermutationMapping(3, false), p3 = getPermutationMapping(3, false);
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < COLS; c++) {
+            var s1 = getBoardNum(r, c), d1 = getBoardNum(p1[r], c);
+            board.values[d1] = vals[s1]; board.given[d1] = givn[s1];
+            board.cornerMarks[d1] = corn[s1]; board.centerMarks[d1] = cent[s1];
+            var s2 = getBoardNum(r + 3, c), d2 = getBoardNum(p2[r] + 3, c);
+            board.values[d2] = vals[s2]; board.given[d2] = givn[s2];
+            board.cornerMarks[d2] = corn[s2]; board.centerMarks[d2] = cent[s2];
+            var s3 = getBoardNum(r + 6, c), d3 = getBoardNum(p3[r] + 6, c);
+            board.values[d3] = vals[s3]; board.given[d3] = givn[s3];
+            board.cornerMarks[d3] = corn[s3]; board.centerMarks[d3] = cent[s3];
         }
     }
+    recomputeConstraints(board);
 }
 
 var permutateColumnsGlobally = (board) => {
     var permutation = getPermutationMapping(3, false);
-
-    var copy = deepcopy(board);
-
-    for(let cb = 0; cb < 3; cb++) {
-        var correspondentColumnBlock = permutation[cb];
-        for(let r = 0; r < ROWS; r++) {
-            for(let c = 0; c < 3; c++) {
-                board[getBoardNum(r, cb * 3 + c)] = copy[getBoardNum(r, correspondentColumnBlock * 3 + c)];
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let cb = 0; cb < 3; cb++) {
+        var scb = permutation[cb];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < 3; c++) {
+                var src = getBoardNum(r, scb * 3 + c), dst = getBoardNum(r, cb * 3 + c);
+                board.values[dst] = vals[src]; board.given[dst] = givn[src];
+                board.cornerMarks[dst] = corn[src]; board.centerMarks[dst] = cent[src];
             }
         }
     }
+    recomputeConstraints(board);
 }
 
 var permutateColumnsBlockwise = (board) => {
-    var permutationBlock1 = getPermutationMapping(3, false);
-    var permutationBlock2 = getPermutationMapping(3, false);
-    var permutationBlock3 = getPermutationMapping(3, false);
-
-    var copy = deepcopy(board);
-
-    for(let c = 0; c < 3; c++) {
-        for(let r = 0; r < ROWS; r++) {
-            board[getBoardNum(r, permutationBlock1[c])] = copy[getBoardNum(r, c)];
-            board[getBoardNum(r, permutationBlock2[c] + 3)] = copy[getBoardNum(r, c + 3)];
-            board[getBoardNum(r, permutationBlock3[c] + 6)] = copy[getBoardNum(r, c + 6)];
+    var p1 = getPermutationMapping(3, false), p2 = getPermutationMapping(3, false), p3 = getPermutationMapping(3, false);
+    var vals = board.values.slice(), givn = board.given.slice(),
+        corn = board.cornerMarks.slice(), cent = board.centerMarks.slice();
+    for (let c = 0; c < 3; c++) {
+        for (let r = 0; r < ROWS; r++) {
+            var s1 = getBoardNum(r, c), d1 = getBoardNum(r, p1[c]);
+            board.values[d1] = vals[s1]; board.given[d1] = givn[s1];
+            board.cornerMarks[d1] = corn[s1]; board.centerMarks[d1] = cent[s1];
+            var s2 = getBoardNum(r, c + 3), d2 = getBoardNum(r, p2[c] + 3);
+            board.values[d2] = vals[s2]; board.given[d2] = givn[s2];
+            board.cornerMarks[d2] = corn[s2]; board.centerMarks[d2] = cent[s2];
+            var s3 = getBoardNum(r, c + 6), d3 = getBoardNum(r, p3[c] + 6);
+            board.values[d3] = vals[s3]; board.given[d3] = givn[s3];
+            board.cornerMarks[d3] = corn[s3]; board.centerMarks[d3] = cent[s3];
         }
     }
+    recomputeConstraints(board);
 }
 
 var permutateNumbers = (board) => {
     var permutation = getPermutationMapping(ROWS + 1, true);
-
-    var copy = deepcopy(board);
-
-    for(let r = 0; r < ROWS; r++) {
-        for(let c = 0; c < COLS; c++) {
-            board[getBoardNum(r, c)].number = permutation[copy[getBoardNum(r, c)].number];
-        }
+    for (let i = 0; i < BOARD_SIZE; i++) {
+        board.values[i] = permutation[board.values[i]];
     }
+    recomputeConstraints(board);
 }
 
 var getPermutationMapping = (size, includeFixedZero) => {
@@ -2983,19 +2914,16 @@ var logObject = (object, prefix = "") => {
 }
 
 var logBoard = (board) => {
-    for(var r = 0; r < ROWS; r++){
+    for (var r = 0; r < ROWS; r++) {
         log("-------------------------------------");
-
-        currentRowCells = []
-        for(var c = 0; c < COLS; c++){
-            var cell = board[r * 9 + c];
-            currentRowCells.push(cell.number < 1 ? ' ' : cell.number);
+        var currentRowCells = [];
+        for (var c = 0; c < COLS; c++) {
+            var v = board.values[r * 9 + c];
+            currentRowCells.push(v < 1 ? ' ' : v);
             currentRowCells.push('|');
         }
-
         log('| ' + currentRowCells.join(' '));
     }
-
     log("-------------------------------------");
 }
 //#endregion
