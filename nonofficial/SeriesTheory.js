@@ -95,19 +95,30 @@ var tick = (elapsedTime, multiplier) => {
     
     var va = getA(a.level);
     
-    var k = BigNumber.from(getN(n.level));
-    log("k=" + k);
-    var exponentialSum = k === BigNumber.ZERO ? BigNumber.ONE : BigNumber.from(Math.pow(1 + (1 / k), k));
-    lastR = exponentialSum;
+    var k = getN(n.level);
+    var bigK = BigNumber.from(k);
+    log("k = " + k);
     
-    var geometricSum = k === BigNumber.ZERO ? BigNumber.ONE : (va * (BigNumber.ONE - exponentialSum.pow(k + 1))) / (BigNumber.ONE - exponentialSum);
-    log("S_n=" + geometricSum);
+    var exponentialSum = calculateExponentialSum(k);
+    lastR = exponentialSum;
+    var bigExponentialSum = BigNumber.from(exponentialSum);
+    log("e ~= " + exponentialSum);
+    
+    var geometricSum = calculateGeometricSum(va, bigExponentialSum, bigK);
+    log("S_n = " + geometricSum);
 
-    var z = BigNumber.from(Math.pow(-1, k - 1) * (k / (k + 1)));
+    var z = calculateZ(k);
     lastZ = z;
-    var polyLogarithm = k === BigNumber.ZERO ? BigNumber.ONE : z.abs().pow(k) / (k.pow(getS(s.level)));
+    var bigAbsoluteZ = BigNumber.from(z).abs();
+    
+    var s = getS(s.level);
+    var bigS = BigNumber.from(s);
+    log("s = " + s);
+    
+    var polyLogarithm = calculatePolyLogarithm(bigAbsoluteZ, bigS, bigK);
+    log ("Li_s(z) = " + polyLogarithm);
     var inversePolyLogarithm = BigNumber.ONE / polyLogarithm;
-    log("Li_s(z)=" + inversePolyLogarithm);
+    log("1 / Li_s(z) = " + inversePolyLogarithm);
 
     var tickSum = bonus * dt * geometricSum * inversePolyLogarithm;
     currency.value += tickSum;
@@ -153,5 +164,47 @@ var getN = (level) => level;
 var getA = (level) => BigNumber.TWO.pow(level);
 
 var getS = (level) => Utils.getStepwisePowerSum(level, 2, 10, 0);
+
+var calculateZ = (k) => {
+    var fraction = k / (k + 1);
+    var sign = k % 2 === 0 ? -1 : 1;
+    return sign * fraction;
+}
+
+var calculateExponentialSum = (k) => {
+    if (k === 0) return 1;
+    return Math.pow(1 + (1 / k), k);
+}
+
+var calculateGeometricSum = (a, r, k) => {
+    if (k === BigNumber.ZERO) return BigNumber.ONE;
+    
+    // If k is small enough, sum exactly
+    if (k < 100) {
+        var sum = BigNumber.ZERO;
+        for (var i = 1; i <= k; i++) {
+            sum += a * r.pow(i);
+        }
+        return sum;
+    }
+    
+    return a * (1 - r.pow(k + 1)) / (1 - r);
+}
+
+var calculatePolyLogarithm = (absZ, s, k) => {
+    if (k === BigNumber.ZERO) return BigNumber.ONE;
+
+    // If k is small enough, sum exactly
+    if (k < 100) {
+        var sum = BigNumber.ZERO;
+        for (var i = 1; i <= k; i++) {
+            sum += absZ.pow(k) / k.pow(s);
+        }
+        return sum;
+    }
+    
+    // Sounds complicated to find a way to calculate this and it seems right now that this is exploding quite quickly (into very small numbers) for any s slightly bigger than maybe even single digits
+    throw new Error("Currently no calculation is implemented for quickly calculating the Polylogarithm for higher k");
+}
 
 init();
