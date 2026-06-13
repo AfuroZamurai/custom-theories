@@ -238,8 +238,8 @@ var calculatePolyLogarithm = (absZ, s, k) => {
 
 var cachedFactorials = [BigNumber.ONE, BigNumber.ONE];
 var calculateFactorial = (target) => {
-    if (typeof cachedFactorials[n] != 'undefined') {
-        return cachedFactorials[n];
+    if (typeof cachedFactorials[target] != 'undefined') {
+        return cachedFactorials[target];
     }
     
     var memoized = cachedFactorials.length - 1;
