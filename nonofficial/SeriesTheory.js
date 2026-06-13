@@ -15,7 +15,7 @@ var version = 1;
 
 var currency;
 var quaternaryEntries;
-var n, a, s;
+var n, a, s, x, y;
 
 var lastR, lastZ;
 
@@ -60,6 +60,22 @@ var init = () => {
         s = theory.createUpgrade(3, currency,  new ExponentialCost(15, 10));
         s.getDescription = (_) => Utils.getMath(getDesc(s.level));
         s.getInfo = (amount) => Utils.getMathTo(getDesc(s.level), getDesc(s.level + amount));
+    }
+
+    // x
+    {
+        let getDesc = (level) => "x=" + getX(level).toString();
+        x = theory.createUpgrade(4, currency,  new ExponentialCost(15, 5));
+        x.getDescription = (_) => Utils.getMath(getDesc(x.level));
+        x.getInfo = (amount) => Utils.getMathTo(getDesc(x.level), getDesc(x.level + amount));
+    }
+
+    // y
+    {
+        let getDesc = (level) => "y=" + getY(level).toString();
+        y = theory.createUpgrade(5, currency,  new ExponentialCost(15, 10));
+        y.getDescription = (_) => Utils.getMath(getDesc(y.level));
+        y.getInfo = (amount) => Utils.getMathTo(getDesc(y.level), getDesc(y.level + amount));
     }
 
     /////////////////////
@@ -111,16 +127,21 @@ var tick = (elapsedTime, multiplier) => {
     lastZ = z;
     var bigAbsoluteZ = BigNumber.from(z).abs();
     
-    var s = getS(s.level);
-    var bigS = BigNumber.from(s);
-    log("s = " + s);
+    var vs = getS(s.level);
+    var bigS = BigNumber.from(vs);
+    log("s = " + vs);
     
     var polyLogarithm = calculatePolyLogarithm(bigAbsoluteZ, bigS, bigK);
     log ("Li_s(z) = " + polyLogarithm);
     var inversePolyLogarithm = BigNumber.ONE / polyLogarithm;
     log("1 / Li_s(z) = " + inversePolyLogarithm);
+    
+    var bigX = BigNumber.from(getX(x.level));
+    var bigY = BigNumber.from(getY(y.level));
+    var binomialSum = calculateBinomialSum(bigK, bigX, bigY);
+    log("B = " + binomialSum);
 
-    var tickSum = bonus * dt * geometricSum * inversePolyLogarithm;
+    var tickSum = bonus * dt * geometricSum * inversePolyLogarithm * binomialSum;
     currency.value += tickSum;
 
     theory.invalidatePrimaryEquation();
@@ -133,8 +154,9 @@ var getPrimaryEquation = () => {
     let rhodot = "\\dot{\\rho} = ";
     let geometricSeries = "\\sum_{k = 0}^{n}ar^k";
     let polyLogarithm = "\\frac{1}{\\text{Li}_s(z)}";
+    let binomialSum = "\\sum_{k = 0}^{n}\\binom{n}{k}x^ky^{n-k}";
     
-    return rhodot + geometricSeries + " \\times " + polyLogarithm;
+    return rhodot + geometricSeries + " \\times " + polyLogarithm + " \\times " + binomialSum;
 }
 
 var getSecondaryEquation = () => {
@@ -164,6 +186,10 @@ var getN = (level) => level;
 var getA = (level) => BigNumber.TWO.pow(level);
 
 var getS = (level) => Utils.getStepwisePowerSum(level, 2, 10, 0);
+
+var getX = (level) => Utils.getStepwisePowerSum(level, 10, 2, 1);
+
+var getY = (level) => Utils.getStepwisePowerSum(level, 25, 1, 1);
 
 var calculateZ = (k) => {
     var fraction = k / (k + 1);
@@ -205,6 +231,38 @@ var calculatePolyLogarithm = (absZ, s, k) => {
     
     // Sounds complicated to find a way to calculate this and it seems right now that this is exploding quite quickly (into very small numbers) for any s slightly bigger than maybe even single digits
     throw new Error("Currently no calculation is implemented for quickly calculating the Polylogarithm for higher k");
+}
+
+var cachedFactorials = [BigNumber.ONE, BigNumber.ONE];
+var calculateFactorial = (target) => {
+    if (typeof cachedFactorials[n] != 'undefined') {
+        return cachedFactorials[n];
+    }
+    
+    var memoized = cachedFactorials.length - 1;
+    var current = cachedFactorials[memoized];
+    
+    for (var i = memoized + 1; i <= target; i++) {
+        current = current * BigNumber.from(i);
+        cachedFactorials.push(current);
+    }
+    
+    return current;
+}
+
+var calculateBinomialSum = (n, bigX, bigY) => {
+    var sum = BigNumber.ZERO;
+    for (var i = 0; i <= n; i++) {
+        var k = BigNumber.from(i);
+        var nfac = calculateFactorial(n);
+        var kfac = calculateFactorial(k);
+        var nminuskfac = calculateFactorial(n - k);
+        var factorialPart = nfac / (kfac * nminuskfac);
+        var xpowk = bigX.pow(k);
+        var ypownminusk = bigY.pow(n - k);
+        sum += factorialPart * xpowk * ypownminusk;
+    }
+    return sum;
 }
 
 init();
