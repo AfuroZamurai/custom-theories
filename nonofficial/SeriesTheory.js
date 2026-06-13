@@ -17,7 +17,7 @@ var currency;
 var quaternaryEntries;
 var n, a, s, x, y;
 
-var lastR, lastZ;
+var lastR, lastZ, lastBCoefficient;
 
 var tauMultiplier = 1;
 var publicationMultiplierExponent = 0.1;
@@ -28,11 +28,12 @@ var init = () => {
     quaternaryEntries = [];
     lastR = 0;
     lastZ = 0;
+    lastBCoefficient = 0;
 
     theory.primaryEquationHeight = 60;
     theory.primaryEquationScale = 1;
     
-    theory.secondaryEquationHeight = 80;
+    theory.secondaryEquationHeight = 100;
     theory.secondaryEquationScale = 1;
 
     ///////////////////
@@ -154,15 +155,16 @@ var getPrimaryEquation = () => {
     let rhodot = "\\dot{\\rho} = ";
     let geometricSeries = "\\sum_{k = 0}^{n}ar^k";
     let polyLogarithm = "\\frac{1}{\\text{Li}_s(z)}";
-    let binomialSum = "\\sum_{k = 0}^{n}\\binom{n}{k}x^ky^{n-k}";
+    let binomialSum = "B\\left(x,y\\right)";
     
     return rhodot + geometricSeries + " \\times " + polyLogarithm + " \\times " + binomialSum;
 }
 
 var getSecondaryEquation = () => {
-    let polyLogarithm = "\\text{Li}_s(z) = \\sum_{k = 1}^{n}\\frac{z^k}{k^s}";
     let r = "r = \\sum_{k = 1}^{n}\\left(1+\\frac{1}{k}\\right)^k";
-    return polyLogarithm + "\\ \\ \\ \\ \\ \\ \\ \\ \\ " + r;
+    let polyLogarithm = "\\text{Li}_s(z) = \\sum_{k = 1}^{n}\\frac{z^k}{k^s}";
+    let binomialSum = "B\\left(x,y\\right) = \\sum_{k = 0}^{n}\\binom{n}{k}x^ky^{n-k}";
+    return r + "\\ \\ \\ " + polyLogarithm + " \\ \\ \\ " + binomialSum;
 }
 
 var getTertiaryEquation = () => "z = \\left| \\sum_{k = 1}^{n}\\left(-1\\right)^{k-1}\\left(2-\\frac{1}{k}-\\frac{1}{k+1}\\right)\\right|";
@@ -171,6 +173,7 @@ var getQuaternaryEntries = () => {
     quaternaryEntries = [];
     quaternaryEntries.push(new QuaternaryEntry("r", lastR));
     quaternaryEntries.push(new QuaternaryEntry("z", lastZ));
+    quaternaryEntries.push(new QuaternaryEntry("\\binom{n}{k}", lastBCoefficient));
 
     return quaternaryEntries;
 }
@@ -187,9 +190,9 @@ var getA = (level) => BigNumber.TWO.pow(level);
 
 var getS = (level) => Utils.getStepwisePowerSum(level, 2, 10, 0);
 
-var getX = (level) => Utils.getStepwisePowerSum(level, 10, 2, 1);
+var getX = (level) => Utils.getStepwisePowerSum(level, 3, 2, 1);
 
-var getY = (level) => Utils.getStepwisePowerSum(level, 25, 1, 1);
+var getY = (level) => Utils.getStepwisePowerSum(level, 5, 1, 1);
 
 var calculateZ = (k) => {
     var fraction = k / (k + 1);
@@ -257,10 +260,11 @@ var calculateBinomialSum = (n, bigX, bigY) => {
         var nfac = calculateFactorial(n);
         var kfac = calculateFactorial(k);
         var nminuskfac = calculateFactorial(n - k);
-        var factorialPart = nfac / (kfac * nminuskfac);
+        var binomialCoefficient = nfac / (kfac * nminuskfac);
+        lastBCoefficient = binomialCoefficient;
         var xpowk = bigX.pow(k);
         var ypownminusk = bigY.pow(n - k);
-        sum += factorialPart * xpowk * ypownminusk;
+        sum += binomialCoefficient * xpowk * ypownminusk;
     }
     return sum;
 }
